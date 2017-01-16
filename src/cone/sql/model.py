@@ -1,4 +1,5 @@
 from cone.app.model import BaseNode
+from cone.sql import get_session
 from node.behaviors import NodeAttributes
 from pyramid.i18n import TranslationStringFactory
 from pyramid.threadlocal import get_current_request

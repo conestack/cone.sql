@@ -1,11 +1,24 @@
-import os
-import tempfile
-import shutil
-import pyramid_zcml
+from cone.app.testing import Security
+from cone.sql import SQLBase
+from cone.sql import initialize_sql
+from cone.sql.model import GUID
+from sqlalchemy import Column
+from sqlalchemy import String
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from cone.app.testing import Security
-from cone.sql import initialize_sql
+import os
+import pyramid_zcml
+import shutil
+import tempfile
+
+
+class TestRecord(SQLBase):
+    """Cannot define test SQLAlchemy model in doctest, ``create_all`` won't
+    recognize at initialization time.
+    """
+    __tablename__ = 'test'
+    uid = Column(GUID, primary_key=True)
+    field = Column(String)
 
 
 class SQLLayer(Security):
