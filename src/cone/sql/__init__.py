@@ -9,7 +9,7 @@ import cone.app
 # initialization and WSGI
 ###############################################################################
 
-SQLBase = declarative_base(cls=IndexingBase)
+SQLBase = declarative_base()
 DBSession = scoped_session(sessionmaker())
 metadata = SQLBase.metadata
 
@@ -63,9 +63,6 @@ def make_app(next_app, global_conf, **local_conf):
 
 # application startup initialization
 def initialize_cone_sql(config, global_config, local_config):
-    # add translation
-    config.add_translation_dirs('cone.sql:locales/')
-
     # database initialization
     prefix = 'cone.sql.dbinit.'
     if local_config.get('%surl' % prefix, None) is None:
