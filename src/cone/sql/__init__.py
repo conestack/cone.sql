@@ -68,6 +68,6 @@ def initialize_cone_sql(config, global_config, local_config):
     if local_config.get('%surl' % prefix, None) is None:
         return
     engine = engine_from_config(local_config, prefix)
-    initialize_db(engine)
+    initialize_sql(engine)
 
 cone.app.register_main_hook(initialize_cone_sql)

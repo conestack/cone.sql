@@ -51,5 +51,7 @@ setup(
     ],
     test_suite = "cone.sql.tests.test_suite",
     entry_points="""\
+    [paste.filter_app_factory]
+    session = cone.sql:make_app
     """
 )
