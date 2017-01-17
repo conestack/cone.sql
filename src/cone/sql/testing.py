@@ -5,6 +5,7 @@ from cone.sql import sql_session_setup
 from cone.sql import initialize_sql
 from cone.sql.model import GUID
 from sqlalchemy import Column
+from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import create_engine
 from sqlalchemy import event
@@ -14,6 +15,10 @@ import pyramid_zcml
 import shutil
 import tempfile
 
+
+###############################################################################
+# Test session setup handler and event listener
+###############################################################################
 
 # override to test if event listener gets called properly
 test_after_flush = None
@@ -32,14 +37,40 @@ def bind_session_listener(session):
     event.listen(session, 'after_flush', after_flush)
 
 
-class TestRecord(SQLBase):
-    """Cannot define test SQLAlchemy model in doctest, ``create_all`` won't
-    recognize at initialization time.
+###############################################################################
+# Test SQL alchemy models
+#
+# cannot define test SQLAlchemy models in doctest, ``create_all`` won't
+# recognize at initialization time.
+###############################################################################
+
+class UUIDAsPrimaryKeyRecord(SQLBase):
+    """Record with UUID as primary key.
     """
-    __tablename__ = 'test'
-    uid = Column(GUID, primary_key=True)
+    __tablename__ = 'uuid_as_primary_key'
+    uid_key = Column(GUID, primary_key=True)
     field = Column(String)
 
+
+class StringAsPrimaryKeyRecord(SQLBase):
+    """Record with string as primary key.
+    """
+    __tablename__ = 'string_as_primary_key'
+    string_key = Column(String, primary_key=True)
+    field = Column(String)
+
+
+class IntegerAsPrimaryKeyRecord(SQLBase):
+    """Record with integer as primary key.
+    """
+    __tablename__ = 'integer_as_primary_key'
+    integer_key = Column(String, primary_key=True)
+    field = Column(String)
+
+
+###############################################################################
+# Test layer
+###############################################################################
 
 class SQLLayer(Security):
 

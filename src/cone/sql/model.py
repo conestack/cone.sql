@@ -3,6 +3,8 @@ from cone.sql import get_session
 from node.behaviors import NodeAttributes
 from pyramid.i18n import TranslationStringFactory
 from pyramid.threadlocal import get_current_request
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.types import CHAR
@@ -11,7 +13,7 @@ import uuid
 
 
 ###############################################################################
-# sql model basics
+# SQL model basics
 ###############################################################################
 
 class GUID(TypeDecorator):
@@ -54,31 +56,66 @@ class GUID(TypeDecorator):
 ###############################################################################
 
 class SQLTableNode(BaseNode):
+    # SQL alchemy model class
     record_class = None
+    # factory for node children
     child_factory = None
+    # map SQL alchemy data types to callables converting values to expected
+    # type
+    data_type_converters = {
+        GUID: uuid.UUID,
+        String: unicode,
+        Integer: int,
+    }
+
+    @property
+    def primary_key(self):
+        if not hasattr(self, '_primary_key'):
+            self._primary_key = inspect(self.record_class).primary_key
+        return self._primary_key
+
+    def _convert_primary_key(self, name):
+        # XXX: multiple primary key support
+        primary_key = self.primary_key[0]
+        primary_key_type = primary_key.type.__class__
+        try:
+            converter = self.data_type_converters[primary_key_type]
+            primary_key_value = converter(name)
+            return primary_key_value
+        except Exception, e:
+            msg = (
+                'Failed to convert node name to expected primary key '
+                'data type: {}'
+            ).format(e)
+            raise KeyError(msg)
 
     def __setitem__(self, name, value):
-        uid = uuid.UUID(name)
+        # XXX: multiple primary key support
+        primary_key = self.primary_key[0]
+        primary_key_value = self._convert_primary_key(name)
         attrs = value.attrs
-        if not attrs['uid']:
-            attrs['uid'] = uid
-        if uid != attrs['uid']:
-            raise ValueError('Node name must equal Node uid.')
+        if not attrs[primary_key.name]:
+            attrs[primary_key.name] = primary_key_value
+        if primary_key_value != attrs[primary_key.name]:
+            msg = (
+                'Node name must match primary key attribute value: {} != {}'
+            ).format(primary_key_value, attrs[primary_key.name])
+            raise KeyError(msg)
         if value.name is None:
             value.__name__ = name
         session = get_session(get_current_request())
         session.add(value.record)
 
     def __getitem__(self, name):
-        # if name no UUID, raise KeyError
-        try:
-            uuid.UUID(name)
-        except ValueError:
-            raise KeyError(name)
+        # XXX: multiple primary key support
+        primary_key = self.primary_key[0]
+        primary_key_value = self._convert_primary_key(name)
         session = get_session(get_current_request())
         query = session.query(self.record_class)
         # always expect uid attribute as primary key
-        record = query.filter(self.record_class.uid == name).first()
+        record = query.filter(
+            getattr(self.record_class, primary_key.name) == primary_key_value
+        ).first()
         if record is None:
             # traversal expects KeyError before looking up views.
             raise KeyError(name)
@@ -90,8 +127,10 @@ class SQLTableNode(BaseNode):
         session.delete(child.record)
 
     def __iter__(self):
+        # XXX: multiple primary key support
         session = get_session(get_current_request())
-        for recid in session.query(self.record_class.uid).all():
+        result = session.query(getattr(self.record_class, primary_key.name))
+        for recid in result.all():
             yield str(recid[0])
 
     def __call__(self):
