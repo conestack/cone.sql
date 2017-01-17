@@ -1,8 +1,8 @@
 cone.sql
 ========
 
-This package provides ``SQLAlchemy`` integration in ``cone.app`` and basic
-application nodes for SQL as backend.
+This package provides SQLAlchemy integration in ``cone.app`` and basic
+application nodes for publishing SQLAlchemy models.
 
 
 Installation
@@ -51,3 +51,54 @@ up the related elements to the WSGI pipeline::
         tm
         session
         my_app
+
+
+Create Model and Nodes
+----------------------
+
+Define the SQLAlchemy model::
+
+    from cone.sql import SQLBase
+    from cone.sql.model import GUID
+    from sqlalchemy import Column
+    from sqlalchemy import String
+
+    class MyRecord(SQLBase):
+        __tablename__ = 'my_table'
+        uid_key = Column(GUID, primary_key=True)
+        field = Column(String)
+
+Define an application node which represents the SQL row and uses the SQLAlchemy
+model. The class holds a reference to the related SQLAlchemy model::
+
+    from cone.sql.model import SQLRowNode
+
+    class MyNode(SQLRowNode):
+        record_class = MyRecord
+
+Define an application node which represents the table and acts as container for
+the SQL row nodes. The class holds a reference to the related SQLAlchemy model
+and the related SQLRowNode::
+
+    from cone.sql.model import SQLTableNode
+
+    class MyContainer(SQLTableNode):
+        record_class = MyRecord
+        child_factory = MyNode
+
+
+Integrate to the Application Model
+----------------------------------
+
+In order to publish a SQL table node, the table node must be hooked up to the
+application model. To hook up the at root level, resgister it as plugin::
+
+    import cone.app
+
+    cone.app.register_plugin('container', MyContainer)
+
+
+Session setup handlers
+----------------------
+
+XXX

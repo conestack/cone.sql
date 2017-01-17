@@ -21,7 +21,7 @@ Define an application node which represents the SQL row and uses the SQLAlchemy
 model::
 
     >>> class UUIDAsKeyNode(SQLRowNode):
-    ...     record_factory = UUIDAsPrimaryKeyRecord
+    ...     record_class = UUIDAsPrimaryKeyRecord
 
 Define an application node which represents the test table and acts as
 container for the SQL row nodes::

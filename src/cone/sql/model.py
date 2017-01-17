@@ -170,7 +170,7 @@ class SQLRowNodeAttributes(NodeAttributes):
 
 
 class SQLRowNode(BaseNode):
-    record_factory = None
+    record_class = None
 
     def __init__(self, name=None, parent=None, record=None):
         self.__name__ = name
@@ -178,7 +178,7 @@ class SQLRowNode(BaseNode):
         self._new = False
         if record is None:
             self._new = True
-            record = self.record_factory()
+            record = self.record_class()
         self.record = record
 
     def attributes_factory(self, name, parent):
