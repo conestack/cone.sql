@@ -87,6 +87,21 @@ and the related SQLRowNode::
         child_factory = MyNode
 
 
+Primary key handling
+--------------------
+
+The node name maps to the primary key of the SQLAlchemy model (currenly no
+multiple primary keys are supported). Node names are converted to the
+primary key data type automatically. The conversion factories are defined at
+``SQLTableNode.data_type_converters`` which can be extended by more data types
+if needed::
+
+    >>> SQLTableNode.data_type_converters
+    {<class 'sqlalchemy.sql.sqltypes.String'>: <type 'unicode'>,
+    <class 'cone.sql.model.GUID'>: <class 'uuid.UUID'>,
+    <class 'sqlalchemy.sql.sqltypes.Integer'>: <type 'int'>}
+
+
 Integrate to the Application Model
 ----------------------------------
 
@@ -102,3 +117,9 @@ Session setup handlers
 ----------------------
 
 XXX
+
+
+TODO
+----
+
+- Support multiple primary keys.

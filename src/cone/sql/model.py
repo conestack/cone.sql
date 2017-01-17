@@ -104,7 +104,16 @@ class SQLTableNode(BaseNode):
         if value.name is None:
             value.__name__ = name
         session = get_session(get_current_request())
-        session.add(value.record)
+        query = session.query(self.record_class)
+        record = query.filter(
+            getattr(self.record_class, primary_key.name) == primary_key_value
+        ).first()
+        if record is None:
+            session.add(value.record)
+        else:
+            for k, v in value.attrs.items():
+                setattr(record, k, v)
+            value.record = value.attrs.record = record
 
     def __getitem__(self, name):
         # XXX: multiple primary key support
@@ -112,12 +121,11 @@ class SQLTableNode(BaseNode):
         primary_key_value = self._convert_primary_key(name)
         session = get_session(get_current_request())
         query = session.query(self.record_class)
-        # always expect uid attribute as primary key
         record = query.filter(
             getattr(self.record_class, primary_key.name) == primary_key_value
         ).first()
         if record is None:
-            # traversal expects KeyError before looking up views.
+            # traversal expects ``KeyError`` before looking up views.
             raise KeyError(name)
         return self.child_factory(name, self, record)
 
@@ -128,6 +136,7 @@ class SQLTableNode(BaseNode):
 
     def __iter__(self):
         # XXX: multiple primary key support
+        primary_key = self.primary_key[0]
         session = get_session(get_current_request())
         result = session.query(getattr(self.record_class, primary_key.name))
         for recid in result.all():
@@ -151,16 +160,16 @@ class SQLRowNodeAttributes(NodeAttributes):
     def __getitem__(self, name):
         if name in self:
             return getattr(self.record, name)
-        raise KeyError(name)
+        raise KeyError('Unknown attribute: {}'.format(name))
 
     def __setitem__(self, name, value):
         if name in self:
             setattr(self.record, name, value)
         else:
-            raise KeyError(u'unknown attribute: %s' % name)
+            raise KeyError('Unknown attribute: {}'.format(name))
 
-    def __delitem__(self):
-        raise NotImplementedError
+    def __delitem__(self, name):
+        raise RuntimeError('Deleting of attributes not allowed')
 
     def __iter__(self):
         return iter(self._columns)

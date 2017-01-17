@@ -64,7 +64,7 @@ class IntegerAsPrimaryKeyRecord(SQLBase):
     """Record with integer as primary key.
     """
     __tablename__ = 'integer_as_primary_key'
-    integer_key = Column(String, primary_key=True)
+    integer_key = Column(Integer, primary_key=True)
     field = Column(String)
 
 
