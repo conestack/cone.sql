@@ -13,6 +13,7 @@ layer = testing.SQLLayer()
 
 
 TESTFILES = [
+    '__init__.rst',
     'model.rst',
 ]
 
