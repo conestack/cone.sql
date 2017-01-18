@@ -8,27 +8,23 @@ application nodes for publishing SQLAlchemy models.
 Installation
 ------------
 
-Include ``cone.sql`` to install dependencies in your application's ``setup.py``.
+Include ``cone.sql`` to install dependencies in your application's
+``setup.py``.
 
 
 Configure Database and WSGI
 ---------------------------
 
 Adopt your application config ini file to define database location and hook
-up the related elements to the WSGI pipeline::
+up the related elements to the WSGI pipeline.
 
-    ...
+.. code-block:: ini
 
     [app:my_app]
     use = egg:cone.app#main
 
-    ...
-
     cone.plugins =
         cone.sql
-        ...
-
-    ...
 
     cone.sql.dbinit.url = sqlite:///%(here)s/var/sqlite/my_db.db
 
@@ -56,7 +52,9 @@ up the related elements to the WSGI pipeline::
 Create Model and Nodes
 ----------------------
 
-Define the SQLAlchemy model::
+Define the SQLAlchemy model.
+
+.. code-block:: python
 
     from cone.sql import SQLBase
     from cone.sql.model import GUID
@@ -69,7 +67,9 @@ Define the SQLAlchemy model::
         field = Column(String)
 
 Define an application node which represents the SQL row and uses the SQLAlchemy
-model. The class holds a reference to the related SQLAlchemy model::
+model. The class holds a reference to the related SQLAlchemy model.
+
+.. code-block:: python
 
     from cone.sql.model import SQLRowNode
 
@@ -78,7 +78,9 @@ model. The class holds a reference to the related SQLAlchemy model::
 
 Define an application node which represents the table and acts as container for
 the SQL row nodes. The class holds a reference to the related SQLAlchemy model
-and the related SQLRowNode::
+and the related SQLRowNode.
+
+.. code-block:: python
 
     from cone.sql.model import SQLTableNode
 
@@ -94,7 +96,9 @@ The node name maps to the primary key of the SQLAlchemy model (currenly no
 multiple primary keys are supported). Node names are converted to the
 primary key data type automatically. The conversion factories are defined at
 ``SQLTableNode.data_type_converters`` which can be extended by more data types
-if needed::
+if needed.
+
+.. code-block:: python
 
     >>> SQLTableNode.data_type_converters
     {<class 'sqlalchemy.sql.sqltypes.String'>: <type 'unicode'>,
@@ -106,7 +110,9 @@ Integrate to the Application Model
 ----------------------------------
 
 In order to publish a SQL table node, the table node must be hooked up to the
-application model. To hook up the at root level, register it as entry::
+application model. To hook up the at root level, register it as entry.
+
+.. code-block:: python
 
     import cone.app
 
@@ -117,7 +123,9 @@ Session setup handlers
 ----------------------
 
 There exists a ``sql_session_setup`` decorator which can be used to perform
-session setup tasks like registering SQLAlchemy event listeners.::
+session setup tasks like registering SQLAlchemy event listeners.
+
+.. code-block:: python
 
     from cone.sql import sql_session_setup
     from sqlalchemy import event
@@ -137,7 +145,9 @@ Query the database
 ------------------
 
 Querying the database is done via SQLAlchemy. You can acquire the session from
-request via ``get_session`` and perform arbitrary operations on it::
+request via ``get_session`` and perform arbitrary operations on it.
+
+.. code-block:: python
 
     from cone.sql import get_session
 
