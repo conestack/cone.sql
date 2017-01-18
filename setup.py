@@ -6,6 +6,7 @@ import os
 version = '0.1.dev0'
 shortdesc = 'SQLAlchemy integration for cone.app'
 longdesc = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
+longdesc += open(os.path.join(os.path.dirname(__file__), 'CHANGES.rst')).read()
 longdesc += open(os.path.join(os.path.dirname(__file__), 'LICENSE.rst')).read()
 
 

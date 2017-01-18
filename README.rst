@@ -133,7 +133,37 @@ session setup tasks like registering SQLAlchemy event listeners.::
         event.listen(session, 'after_flush', after_flush)
 
 
+Query the database
+------------------
+
+Querying the database is done via SQLAlchemy. You can acquire the session from
+request via ``get_session`` and perform arbitrary operations on it::
+
+    from cone.sql import get_session
+
+    session = get_session(request)
+    result = session.query(MyRecord).all()
+
+
 TODO
 ----
 
 - Support multiple primary keys.
+
+
+Test coverage
+-------------
+
+Summary of the test coverage report::
+
+    lines   cov%   module
+       50   100%   cone.sql.__init__
+      143   100%   cone.sql.model
+       57   100%   cone.sql.testing
+       18   100%   cone.sql.tests
+
+
+Contributors
+============
+
+- Robert Niederreiter (Author)

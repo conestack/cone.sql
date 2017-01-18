@@ -5,14 +5,65 @@ Imports::
 
     >>> from cone.app import get_root
     >>> from cone.sql import get_session
+    >>> from cone.sql.model import GUID
     >>> from cone.sql.model import SQLRowNode
     >>> from cone.sql.model import SQLTableNode
     >>> from cone.sql import testing
     >>> from cone.sql.testing import IntegerAsPrimaryKeyRecord
     >>> from cone.sql.testing import StringAsPrimaryKeyRecord
     >>> from cone.sql.testing import UUIDAsPrimaryKeyRecord
+    >>> from sqlalchemy.engine import default
     >>> import cone.app
     >>> import uuid
+
+
+Platform independent GUID data type
+-----------------------------------
+
+Define a dummy dialect::
+
+    >>> class DummyDialect(default.DefaultDialect):
+    ...     name = None
+
+    >>> dialect = DummyDialect()
+
+Instanciate ``GUID`` data type::
+
+    >>> guid = GUID()
+
+Test ``load_dialect_impl``::
+
+    >>> dialect.name = 'postgresql'
+    >>> guid.load_dialect_impl(dialect)
+    UUID()
+
+    >>> dialect.name = 'other'
+    >>> guid.load_dialect_impl(dialect)
+    CHAR(length=32)
+
+Test ``process_bind_param``::
+
+    >>> dialect.name = 'postgresql'
+    >>> guid.process_bind_param(None, dialect)
+
+    >>> value = uuid.UUID('d8f1d964-9f2f-4df5-9f30-c5a90052576d')
+    >>> guid.process_bind_param(value, dialect)
+    'd8f1d964-9f2f-4df5-9f30-c5a90052576d'
+
+    >>> dialect.name = 'other'
+    >>> guid.process_bind_param(value, dialect)
+    'd8f1d9649f2f4df59f30c5a90052576d'
+
+    >>> value = str(value)
+    >>> guid.process_bind_param(value, dialect)
+    'd8f1d9649f2f4df59f30c5a90052576d'
+
+Test ``process_result_value``::
+
+    >>> guid.process_result_value(None, dialect)
+
+    >>> guid.process_result_value(value, dialect)
+    UUID('d8f1d964-9f2f-4df5-9f30-c5a90052576d')
 
 
 UUID as primary key
