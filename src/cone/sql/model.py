@@ -104,13 +104,12 @@ class SQLTableNode(BaseNode):
         if value.name is None:
             value.__name__ = name
         session = get_session(get_current_request())
-        query = session.query(self.record_class)
-        record = query.filter(
-            getattr(self.record_class, primary_key.name) == primary_key_value
-        ).first()
-        if record is None:
+        query = session.query(self.record_class).filter(
+            getattr(self.record_class, primary_key.name) == primary_key_value)
+        if not session.query(query.exists()).scalar():
             session.add(value.record)
         else:
+            record = query.first()
             for k, v in value.attrs.items():
                 setattr(record, k, v)
             value.record = value.attrs.record = record
