@@ -106,17 +106,31 @@ Integrate to the Application Model
 ----------------------------------
 
 In order to publish a SQL table node, the table node must be hooked up to the
-application model. To hook up the at root level, resgister it as plugin::
+application model. To hook up the at root level, register it as entry::
 
     import cone.app
 
-    cone.app.register_plugin('container', MyContainer)
+    cone.app.register_entry('container', MyContainer)
 
 
 Session setup handlers
 ----------------------
 
-XXX
+There exists a ``sql_session_setup`` decorator which can be used to perform
+session setup tasks like registering SQLAlchemy event listeners.::
+
+    from cone.sql import sql_session_setup
+    from sqlalchemy import event
+
+    def after_flush(session, flush_context):
+        """Do something after flush.
+        """
+
+    @sql_session_setup
+    def bind_session_listener(session):
+        """SQL session setup callback.
+        """
+        event.listen(session, 'after_flush', after_flush)
 
 
 TODO

@@ -6,25 +6,11 @@ import cone.app
 
 
 ###############################################################################
-# initialization and WSGI
+# utils
 ###############################################################################
-
-SQLBase = declarative_base()
-DBSession = scoped_session(sessionmaker())
-metadata = SQLBase.metadata
-
-
-def initialize_sql(engine):
-    """Basic SQL initialization.
-    """
-    DBSession.configure(bind=engine)
-    metadata.bind = engine
-    metadata.create_all(engine)
-
 
 # key used for storing SQL session on request environment
 session_key = 'cone.sql.session'
-
 
 def get_session(request):
     """Return request related SQL session.
@@ -52,6 +38,26 @@ def setup_session(session):
     for session_setup_callback in _session_setup_handlers:
         session_setup_callback(session)
 
+
+###############################################################################
+# DB initialization
+###############################################################################
+
+SQLBase = declarative_base()
+DBSession = scoped_session(sessionmaker())
+metadata = SQLBase.metadata
+
+def initialize_sql(engine):
+    """Basic SQL initialization.
+    """
+    DBSession.configure(bind=engine)
+    metadata.bind = engine
+    metadata.create_all(engine)
+
+
+###############################################################################
+# WSGI
+###############################################################################
 
 class WSGISQLSession(object):
     """WSGI framework component that opens and closes a SQL session.
@@ -86,6 +92,10 @@ def make_app(next_app, global_conf, **local_conf):
     sql.session_key = local_conf.get('session_key', sql.session_key)
     return WSGISQLSession(next_app, maker, sql.session_key)
 
+
+###############################################################################
+# cone startup integration
+###############################################################################
 
 def initialize_cone_sql(config, global_config, local_config):
     """Cone startup application initialization.

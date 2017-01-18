@@ -7,6 +7,7 @@ Imports::
     >>> from cone.sql import get_session
     >>> from cone.sql.model import SQLRowNode
     >>> from cone.sql.model import SQLTableNode
+    >>> from cone.sql import testing
     >>> from cone.sql.testing import IntegerAsPrimaryKeyRecord
     >>> from cone.sql.testing import StringAsPrimaryKeyRecord
     >>> from cone.sql.testing import UUIDAsPrimaryKeyRecord
@@ -28,7 +29,7 @@ Define nodes::
 
 Resgister entry::
 
-    >>> cone.app.register_plugin('uuid_as_key_container', UUIDAsKeyContainer)
+    >>> cone.app.register_entry('uuid_as_key_container', UUIDAsKeyContainer)
 
 Get container from root::
 
@@ -80,7 +81,7 @@ Define nodes::
 
 Resgister entry::
 
-    >>> cone.app.register_plugin(
+    >>> cone.app.register_entry(
     ...     'string_as_key_container',
     ...     StringAsKeyContainer
     ... )
@@ -131,7 +132,7 @@ Define nodes::
 
 Resgister entry::
 
-    >>> cone.app.register_plugin(
+    >>> cone.app.register_entry(
     ...     'integer_as_key_container',
     ...     IntegerAsKeyContainer
     ... )
@@ -304,4 +305,41 @@ SQL row node attributes cannot be deleted::
     >>> del child.attrs['field']
     Traceback (most recent call last):
       ...
-    RuntimeError: Deleting of attributes not allowed
+    KeyError: 'Deleting of attributes not allowed'
+
+SQL row node is a leaf thus containment API always raises KeyError and iter
+returns empty result::
+
+    >>> child['foo'] = 'foo'
+    Traceback (most recent call last):
+      ...
+    KeyError: 'foo'
+
+    >>> child['foo']
+    Traceback (most recent call last):
+      ...
+    KeyError: 'foo'
+
+    >>> del child['foo']
+    Traceback (most recent call last):
+      ...
+    KeyError: 'foo'
+
+    >>> list(iter(child))
+    []
+
+Test ``sql_session_setup``. The SQL session setup handler is defined in
+``cone.sql.testing`` and registers a callback to ``after_flush`` event.
+Patch desired callback reference and test whether it's called::
+
+    >>> def callback(session, flush_context):
+    ...     print session, flush_context
+
+    >>> testing.test_after_flush = callback
+
+    >>> container['1235'].attrs['field'] = u'Changed Value'
+    >>> container()
+    <sqlalchemy.orm.session.Session object at ...> 
+    <sqlalchemy.orm.unitofwork.UOWTransaction object at ...>
+
+    >>> testing.test_after_flush = None

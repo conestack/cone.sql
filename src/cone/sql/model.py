@@ -156,19 +156,19 @@ class SQLRowNodeAttributes(NodeAttributes):
     def _columns(self):
         return inspect(self.record.__class__).attrs.keys()
 
-    def __getitem__(self, name):
-        if name in self:
-            return getattr(self.record, name)
-        raise KeyError('Unknown attribute: {}'.format(name))
-
     def __setitem__(self, name, value):
         if name in self:
             setattr(self.record, name, value)
         else:
             raise KeyError('Unknown attribute: {}'.format(name))
 
+    def __getitem__(self, name):
+        if name in self:
+            return getattr(self.record, name)
+        raise KeyError('Unknown attribute: {}'.format(name))
+
     def __delitem__(self, name):
-        raise RuntimeError('Deleting of attributes not allowed')
+        raise KeyError('Deleting of attributes not allowed')
 
     def __iter__(self):
         return iter(self._columns)
@@ -191,6 +191,18 @@ class SQLRowNode(BaseNode):
 
     def attributes_factory(self, name, parent):
         return SQLRowNodeAttributes(name, parent, self.record)
+
+    def __setitem__(self, name, value):
+        raise KeyError(name)
+
+    def __getitem__(self, name):
+        raise KeyError(name)
+
+    def __delitem__(self, name):
+        raise KeyError(name)
+
+    def __iter__(self):
+        return iter([])
 
     def __call__(self):
         session = get_session(get_current_request())
