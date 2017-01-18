@@ -1,7 +1,9 @@
 cone.sql
 ========
 
-Imports::
+Imports.
+
+.. code-block:: pycon
 
     >>> from cone import sql
     >>> from pyramid.paster import get_app
@@ -9,7 +11,9 @@ Imports::
     >>> import shutil
     >>> import tempfile
 
-Create temp directory containing test application config::
+Create temp directory containing test application config.
+
+.. code-block:: pycon
 
     >>> temp_dir = tempfile.mkdtemp()
     >>> config_path = os.path.join(temp_dir, 'sql.ini')
@@ -46,35 +50,47 @@ Create temp directory containing test application config::
     >>> with open(config_path, 'w') as f:
     ...     f.write(config)
 
-Create WSGI app::
+Create WSGI app.
+
+.. code-block:: pycon
 
     >>> wsgi_app = get_app(config_path, 'main')
     >>> wsgi_app
     <cone.app.RemoteAddrFilter object at ...>
 
-Dummy WSGI environment::
+Dummy WSGI environment.
+
+.. code-block:: pycon
 
     >>> environ = {
     ...     'REQUEST_METHOD': 'GET'
     ... }
 
-Dummy ``start_response`` callback::
+Dummy ``start_response`` callback.
+
+.. code-block:: pycon
 
     >>> def start_response(*args):
     ...     print args
 
-Call WSGI app::
+Call WSGI app.
+
+.. code-block:: pycon
 
     >>> wsgi_app(environ, start_response)
     ('200 OK', [('Content-Type', 'text/html; charset=UTF-8'), 
     ('Content-Length', '1108')], None)
     <generator object close_when_done_generator at ...>
 
-SQL session has been hooked up to environment::
+SQL session has been hooked up to environment.
+
+.. code-block:: pycon
 
     >>> environ[sql.session_key]
     <sqlalchemy.orm.session.Session object at ...>
 
-Cleanup::
+Cleanup.
+
+.. code-block:: pycon
 
     >>> shutil.rmtree(temp_dir)

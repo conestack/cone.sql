@@ -1,7 +1,9 @@
 cone.sql.model
 ==============
 
-Imports::
+Imports.
+
+.. code-block:: pycon
 
     >>> from cone.app import get_root
     >>> from cone.sql import get_session
@@ -20,18 +22,24 @@ Imports::
 Platform independent GUID data type
 -----------------------------------
 
-Define a dummy dialect::
+Define a dummy dialect.
+
+.. code-block:: pycon
 
     >>> class DummyDialect(default.DefaultDialect):
     ...     name = None
 
     >>> dialect = DummyDialect()
 
-Instanciate ``GUID`` data type::
+Instanciate ``GUID`` data type.
+
+.. code-block:: pycon
 
     >>> guid = GUID()
 
-Test ``load_dialect_impl``::
+Test ``load_dialect_impl``.
+
+.. code-block:: pycon
 
     >>> dialect.name = 'postgresql'
     >>> guid.load_dialect_impl(dialect)
@@ -41,7 +49,9 @@ Test ``load_dialect_impl``::
     >>> guid.load_dialect_impl(dialect)
     CHAR(length=32)
 
-Test ``process_bind_param``::
+Test ``process_bind_param``.
+
+.. code-block:: pycon
 
     >>> dialect.name = 'postgresql'
     >>> guid.process_bind_param(None, dialect)
@@ -58,7 +68,9 @@ Test ``process_bind_param``::
     >>> guid.process_bind_param(value, dialect)
     'd8f1d9649f2f4df59f30c5a90052576d'
 
-Test ``process_result_value``::
+Test ``process_result_value``.
+
+.. code-block:: pycon
 
     >>> guid.process_result_value(None, dialect)
 
@@ -69,7 +81,9 @@ Test ``process_result_value``::
 UUID as primary key
 -------------------
 
-Define nodes::
+Define nodes.
+
+.. code-block:: pycon
 
     >>> class UUIDAsKeyNode(SQLRowNode):
     ...     record_class = UUIDAsPrimaryKeyRecord
@@ -78,35 +92,47 @@ Define nodes::
     ...     record_class = UUIDAsPrimaryKeyRecord
     ...     child_factory = UUIDAsKeyNode
 
-Resgister entry::
+Resgister entry.
+
+.. code-block:: pycon
 
     >>> cone.app.register_entry('uuid_as_key_container', UUIDAsKeyContainer)
 
-Get container from root::
+Get container from root.
+
+.. code-block:: pycon
 
     >>> root = get_root()
     >>> container = root['uuid_as_key_container']
     >>> container
     <UUIDAsKeyContainer object 'uuid_as_key_container' at ...>
 
-Add node to container::
+Add node to container.
+
+.. code-block:: pycon
 
     >>> node_uid = '6090411e-d249-4dc6-9da1-74172919f1ed'
     >>> node = container[node_uid] = UUIDAsKeyNode()
     >>> node.attrs['field'] = u'Value'
 
-Persist data::
+Persist data.
+
+.. code-block:: pycon
 
     >>> container()
 
-Query data record using SQLAlchemy directly::
+Query data record using SQLAlchemy directly.
+
+.. code-block:: pycon
 
     >>> request = layer.new_request()
     >>> session = get_session(request)
     >>> session.query(UUIDAsPrimaryKeyRecord).get(uuid.UUID(node_uid))
     <cone.sql.testing.UUIDAsPrimaryKeyRecord object at ...>
 
-Get children via node API::
+Get children via node API.
+
+.. code-block:: pycon
 
     >>> items = container.items()
     >>> items
@@ -121,7 +147,9 @@ Get children via node API::
 String as primary key
 ---------------------
 
-Define nodes::
+Define nodes.
+
+.. code-block:: pycon
 
     >>> class StringAsKeyNode(SQLRowNode):
     ...     record_class = StringAsPrimaryKeyRecord
@@ -130,36 +158,48 @@ Define nodes::
     ...     record_class = StringAsPrimaryKeyRecord
     ...     child_factory = StringAsKeyNode
 
-Resgister entry::
+Resgister entry.
+
+.. code-block:: pycon
 
     >>> cone.app.register_entry(
     ...     'string_as_key_container',
     ...     StringAsKeyContainer
     ... )
 
-Get container from root::
+Get container from root.
+
+.. code-block:: pycon
 
     >>> container = root['string_as_key_container']
     >>> container
     <StringAsKeyContainer object 'string_as_key_container' at ...>
 
-Add node to container::
+Add node to container.
+
+.. code-block:: pycon
 
     >>> node = container[u'key'] = StringAsKeyNode()
     >>> node.attrs['field'] = u'Value'
 
-Persist data::
+Persist data.
+
+.. code-block:: pycon
 
     >>> container()
 
-Query data record using SQLAlchemy directly::
+Query data record using SQLAlchemy directly.
+
+.. code-block:: pycon
 
     >>> request = layer.new_request()
     >>> session = get_session(request)
     >>> session.query(StringAsPrimaryKeyRecord).get(u'key')
     <cone.sql.testing.StringAsPrimaryKeyRecord object at ...>
 
-Get children via node API::
+Get children via node API.
+
+.. code-block:: pycon
 
     >>> items = container.items()
     >>> items
@@ -172,7 +212,9 @@ Get children via node API::
 Integer as primary key
 ----------------------
 
-Define nodes::
+Define nodes.
+
+.. code-block:: pycon
 
     >>> class IntegerAsKeyNode(SQLRowNode):
     ...     record_class = IntegerAsPrimaryKeyRecord
@@ -181,36 +223,48 @@ Define nodes::
     ...     record_class = IntegerAsPrimaryKeyRecord
     ...     child_factory = IntegerAsKeyNode
 
-Resgister entry::
+Resgister entry.
+
+.. code-block:: pycon
 
     >>> cone.app.register_entry(
     ...     'integer_as_key_container',
     ...     IntegerAsKeyContainer
     ... )
 
-Get container from root::
+Get container from root.
+
+.. code-block:: pycon
 
     >>> container = root['integer_as_key_container']
     >>> container
     <IntegerAsKeyContainer object 'integer_as_key_container' at ...>
 
-Add node to container::
+Add node to container.
+
+.. code-block:: pycon
 
     >>> node = container['1234'] = IntegerAsKeyNode()
     >>> node.attrs['field'] = u'Value'
 
-Persist data::
+Persist data.
+
+.. code-block:: pycon
 
     >>> container()
 
-Query data record using SQLAlchemy directly::
+Query data record using SQLAlchemy directly.
+
+.. code-block:: pycon
 
     >>> request = layer.new_request()
     >>> session = get_session(request)
     >>> session.query(IntegerAsPrimaryKeyRecord).get('1234')
     <cone.sql.testing.IntegerAsPrimaryKeyRecord object at ...>
 
-Get children via node API::
+Get children via node API.
+
+.. code-block:: pycon
 
     >>> items = container.items()
     >>> items
@@ -224,7 +278,9 @@ Model API Tests
 ---------------
 
 SQLAlchemy data types for primary keys can be extended on
-``data_type_converters``::
+``data_type_converters``.
+
+.. code-block:: pycon
 
     >>> sorted(
     ...     SQLTableNode.data_type_converters.items(),
@@ -235,7 +291,9 @@ SQLAlchemy data types for primary keys can be extended on
     (<class 'sqlalchemy.sql.sqltypes.String'>, <type 'unicode'>)]
 
 ``__getitem__`` and ``__setitem__`` raise a ``KeyError`` if node name cannot
-be converted to primary key data type::
+be converted to primary key data type.
+
+.. code-block:: pycon
 
     >>> container = root['integer_as_key_container']
     >>> container['a']
@@ -251,7 +309,9 @@ be converted to primary key data type::
     invalid literal for int() with base 10: 'a'"
 
 If primary key attribute is set on node and given name on ``__setitem__`` not
-matches attribute value, a ``KeyError`` is thrown::
+matches attribute value, a ``KeyError`` is thrown.
+
+.. code-block:: pycon
 
     >>> child = IntegerAsKeyNode()
     >>> child.attrs['integer_key'] = 123
@@ -260,7 +320,9 @@ matches attribute value, a ``KeyError`` is thrown::
       ...
     KeyError: 'Node name must match primary key attribute value: 124 != 123'
 
-Access inexistent child::
+Access inexistent child.
+
+.. code-block:: pycon
 
     >>> container['124']
     Traceback (most recent call last):
@@ -268,20 +330,26 @@ Access inexistent child::
     KeyError: '124'
 
 If primary key attribute not set, it gets automatically set by name on
-``__setitem__``::
+``__setitem__``.
+
+.. code-block:: pycon
 
     >>> child = IntegerAsKeyNode()
     >>> container['123'] = child
     >>> child.attrs.items()
     [('integer_key', 123), ('field', None)]
 
-SQL model column values can be accessed and set via ``attrs``::
+SQL model column values can be accessed and set via ``attrs``.
+
+.. code-block:: pycon
 
     >>> child.attrs['field'] = u'Value'
     >>> child.attrs.items()
     [('integer_key', 123), ('field', u'Value')]
 
-SQL model gets persisted on ``__call__``::
+SQL model gets persisted on ``__call__``.
+
+.. code-block:: pycon
 
     >>> container()
 
@@ -291,7 +359,9 @@ SQL model gets persisted on ``__call__``::
     [<cone.sql.testing.IntegerAsPrimaryKeyRecord object at ...>, 
     <cone.sql.testing.IntegerAsPrimaryKeyRecord object at ...>]
 
-Override child::
+Override child.
+
+.. code-block:: pycon
 
     >>> child = IntegerAsKeyNode()
     >>> child.attrs['field'] = u'Other Value'
@@ -306,7 +376,9 @@ Override child::
     [<cone.sql.testing.IntegerAsPrimaryKeyRecord object at ...>, 
     <cone.sql.testing.IntegerAsPrimaryKeyRecord object at ...>]
 
-Delete child::
+Delete child.
+
+.. code-block:: pycon
 
     >>> del container['123']
 
@@ -315,7 +387,9 @@ Delete child::
     >>> session.query(IntegerAsPrimaryKeyRecord).all()
     [<cone.sql.testing.IntegerAsPrimaryKeyRecord object at ...>]
 
-Update Child::
+Update Child.
+
+.. code-block:: pycon
 
     >>> child = container['1234']
     >>> child.attrs['field'] = u'Updated Value'
@@ -328,7 +402,9 @@ Update Child::
     u'Updated Value'
 
 Other than most other node implementations, ``TableRowNodes`` can be persisted
-without being hooked up to the tree directly::
+without being hooked up to the tree directly.
+
+.. code-block:: pycon
 
     >>> child = IntegerAsKeyNode()
     >>> child.attrs['integer_key'] = 1235
@@ -339,7 +415,9 @@ without being hooked up to the tree directly::
     [('1234', <IntegerAsKeyNode object '1234' at ...>), 
     ('1235', <IntegerAsKeyNode object '1235' at ...>)]
 
-Access inexisting attributes::
+Access inexisting attributes.
+
+.. code-block:: pycon
 
     >>> child.attrs['inexistent']
     Traceback (most recent call last):
@@ -351,7 +429,9 @@ Access inexisting attributes::
       ...
     KeyError: 'Unknown attribute: inexistent'
 
-SQL row node attributes cannot be deleted::
+SQL row node attributes cannot be deleted.
+
+.. code-block:: pycon
 
     >>> del child.attrs['field']
     Traceback (most recent call last):
@@ -359,7 +439,9 @@ SQL row node attributes cannot be deleted::
     KeyError: 'Deleting of attributes not allowed'
 
 SQL row node is a leaf thus containment API always raises KeyError and iter
-returns empty result::
+returns empty result.
+
+.. code-block:: pycon
 
     >>> child['foo'] = 'foo'
     Traceback (most recent call last):
@@ -381,7 +463,9 @@ returns empty result::
 
 Test ``sql_session_setup``. The SQL session setup handler is defined in
 ``cone.sql.testing`` and registers a callback to ``after_flush`` event.
-Patch desired callback reference and test whether it's called::
+Patch desired callback reference and test whether it's called.
+
+.. code-block:: pycon
 
     >>> def callback(session, flush_context):
     ...     print session, flush_context
