@@ -168,7 +168,7 @@ Summary of the test coverage report::
 
     lines   cov%   module
        50   100%   cone.sql.__init__
-      143   100%   cone.sql.model
+      186    99%   cone.sql.model
        57   100%   cone.sql.testing
        18   100%   cone.sql.tests
 

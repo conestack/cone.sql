@@ -6,7 +6,7 @@ import cone.app
 
 
 ###############################################################################
-# utils
+# Utils
 ###############################################################################
 
 # key used for storing SQL session on request environment
@@ -94,7 +94,7 @@ def make_app(next_app, global_conf, **local_conf):
 
 
 ###############################################################################
-# cone startup integration
+# Cone startup integration
 ###############################################################################
 
 def initialize_cone_sql(config, global_config, local_config):

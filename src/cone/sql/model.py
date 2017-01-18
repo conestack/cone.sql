@@ -1,6 +1,19 @@
-from cone.app.model import BaseNode
+from cone.app.model import AppNode
 from cone.sql import get_session
+from node.behaviors import Adopt
+from node.behaviors import Attributes
+from node.behaviors import DefaultInit
+from node.behaviors import Lifecycle
 from node.behaviors import NodeAttributes
+from node.behaviors import Nodespaces
+from node.behaviors import Nodify
+from node.interfaces import ICallable
+from node.interfaces import IStorage
+from plumber import Behavior
+from plumber import default
+from plumber import finalize
+from plumber import override
+from plumber import plumbing
 from pyramid.i18n import TranslationStringFactory
 from pyramid.threadlocal import get_current_request
 from sqlalchemy import Integer
@@ -9,11 +22,12 @@ from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.types import CHAR
 from sqlalchemy.types import TypeDecorator
+from zope.interface import implementer
 import uuid
 
 
 ###############################################################################
-# SQL model basics
+# SQLAlchemy data types
 ###############################################################################
 
 class GUID(TypeDecorator):
@@ -52,28 +66,33 @@ class GUID(TypeDecorator):
 
 
 ###############################################################################
-# application node basics
+# SQL table storage
 ###############################################################################
 
-class SQLTableNode(BaseNode):
+@implementer(IStorage, ICallable)
+class SQLTableStorage(Behavior):
     # SQL alchemy model class
-    record_class = None
+    record_class = default(None)
+    # SQL alchemy session
+    session = default(None)
     # factory for node children
-    child_factory = None
+    child_factory = default(None)
     # map SQL alchemy data types to callables converting values to expected
     # type
-    data_type_converters = {
+    data_type_converters = default({
         GUID: uuid.UUID,
         String: unicode,
         Integer: int,
-    }
+    })
 
+    @default
     @property
     def primary_key(self):
         if not hasattr(self, '_primary_key'):
             self._primary_key = inspect(self.record_class).primary_key
         return self._primary_key
 
+    @default
     def _convert_primary_key(self, name):
         # XXX: multiple primary key support
         primary_key = self.primary_key[0]
@@ -89,6 +108,7 @@ class SQLTableNode(BaseNode):
             ).format(e)
             raise KeyError(msg)
 
+    @finalize
     def __setitem__(self, name, value):
         # XXX: multiple primary key support
         primary_key = self.primary_key[0]
@@ -101,9 +121,7 @@ class SQLTableNode(BaseNode):
                 'Node name must match primary key attribute value: {} != {}'
             ).format(primary_key_value, attrs[primary_key.name])
             raise KeyError(msg)
-        if value.name is None:
-            value.__name__ = name
-        session = get_session(get_current_request())
+        session = self.session
         query = session.query(self.record_class).filter(
             getattr(self.record_class, primary_key.name) == primary_key_value)
         if not session.query(query.exists()).scalar():
@@ -114,11 +132,12 @@ class SQLTableNode(BaseNode):
                 setattr(record, k, v)
             value.record = value.attrs.record = record
 
+    @finalize
     def __getitem__(self, name):
         # XXX: multiple primary key support
         primary_key = self.primary_key[0]
         primary_key_value = self._convert_primary_key(name)
-        session = get_session(get_current_request())
+        session = self.session
         query = session.query(self.record_class)
         record = query.filter(
             getattr(self.record_class, primary_key.name) == primary_key_value
@@ -128,23 +147,30 @@ class SQLTableNode(BaseNode):
             raise KeyError(name)
         return self.child_factory(name, self, record)
 
+    @finalize
     def __delitem__(self, name):
         child = self[name]
-        session = get_session(get_current_request())
+        session = self.session
         session.delete(child.record)
 
+    @finalize
     def __iter__(self):
         # XXX: multiple primary key support
         primary_key = self.primary_key[0]
-        session = get_session(get_current_request())
+        session = self.session
         result = session.query(getattr(self.record_class, primary_key.name))
         for recid in result.all():
             yield str(recid[0])
 
+    @finalize
     def __call__(self):
-        session = get_session(get_current_request())
+        session = self.session
         session.commit()
 
+
+###############################################################################
+# SQL row storage
+###############################################################################
 
 class SQLRowNodeAttributes(NodeAttributes):
 
@@ -177,9 +203,14 @@ class SQLRowNodeAttributes(NodeAttributes):
         return name in self._columns
 
 
-class SQLRowNode(BaseNode):
-    record_class = None
+@implementer(IStorage, ICallable)
+class SQLRowStorage(Behavior):
+    # SQL alchemy model class
+    record_class = default(None)
+    # SQL alchemy session
+    session = default(None)
 
+    @override
     def __init__(self, name=None, parent=None, record=None):
         self.__name__ = name
         self.__parent__ = parent
@@ -189,24 +220,74 @@ class SQLRowNode(BaseNode):
             record = self.record_class()
         self.record = record
 
+    @override
     def attributes_factory(self, name, parent):
         return SQLRowNodeAttributes(name, parent, self.record)
 
+    @finalize
     def __setitem__(self, name, value):
         raise KeyError(name)
 
+    @finalize
     def __getitem__(self, name):
         raise KeyError(name)
 
+    @finalize
     def __delitem__(self, name):
         raise KeyError(name)
 
+    @finalize
     def __iter__(self):
         return iter([])
 
+    @finalize
     def __call__(self):
-        session = get_session(get_current_request())
+        session = self.session
         if self._new:
             session.add(self.record)
             self._new = False
         session.commit()
+
+
+###############################################################################
+# SQL session provider
+###############################################################################
+
+class SQLSession(Behavior):
+    """Behavior providing SQLAlchemy session from pyramid request.
+    """
+
+    @finalize
+    @property
+    def session(self):
+        return get_session(get_current_request())
+
+
+###############################################################################
+# Application node basics
+###############################################################################
+
+@plumbing(
+    AppNode,
+    Adopt,
+    DefaultInit,
+    Nodify,
+    Lifecycle,
+    SQLSession,
+    SQLTableStorage)
+class SQLTableNode(object):
+    """Basic SQL table providing node.
+    """
+
+
+@plumbing(
+    AppNode,
+    Nodespaces,
+    Attributes,
+    Nodify,
+    Lifecycle,
+    SQLSession,
+    SQLRowStorage)
+class SQLRowNode(object):
+    """Basic SQL row providing node.
+    """
