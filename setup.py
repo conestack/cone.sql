@@ -38,7 +38,7 @@ setup(
         'repoze.retry',
         'cone.app',
     ],
-    extras_require = dict(
+    extras_require=dict(
         test=[
             'interlude',
             'plone.testing',
@@ -50,7 +50,7 @@ setup(
         'plone.testing',
         'unittest2',
     ],
-    test_suite = "cone.sql.tests.test_suite",
+    test_suite="cone.sql.tests.test_suite",
     entry_points="""\
     [paste.filter_app_factory]
     session = cone.sql:make_app
