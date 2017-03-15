@@ -287,8 +287,8 @@ SQLAlchemy data types for primary keys can be extended on
     ...     key=lambda x: x[0].__name__
     ... )
     [(<class 'cone.sql.model.GUID'>, <class 'uuid.UUID'>), 
-    (<class 'sqlalchemy.sql.sqltypes.Integer'>, <type 'int'>), 
-    (<class 'sqlalchemy.sql.sqltypes.String'>, <type 'unicode'>)]
+    (<class 'sqlalchemy...Integer'>, <type 'int'>), 
+    (<class 'sqlalchemy...String'>, <type 'unicode'>)]
 
 ``__getitem__`` and ``__setitem__`` raise a ``KeyError`` if node name cannot
 be converted to primary key data type.
