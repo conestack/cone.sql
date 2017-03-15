@@ -1,3 +1,4 @@
+from sqlalchemy import MetaData
 from sqlalchemy import engine_from_config
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session
@@ -43,9 +44,10 @@ def setup_session(session):
 # DB initialization
 ###############################################################################
 
-SQLBase = declarative_base()
+metadata = MetaData()
+SQLBase = declarative_base(metadata=metadata)
 DBSession = scoped_session(sessionmaker())
-metadata = SQLBase.metadata
+
 
 def initialize_sql(engine):
     """Basic SQL initialization.
@@ -87,7 +89,6 @@ def make_app(next_app, global_conf, **local_conf):
     """
     from cone import sql
     engine = engine_from_config(local_conf, prefix='sqlalchemy.')
-    sql.SQLBase.metadata.create_all(engine)
     maker = sessionmaker(bind=engine)
     sql.session_key = local_conf.get('session_key', sql.session_key)
     return WSGISQLSession(next_app, maker, sql.session_key)
