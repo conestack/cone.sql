@@ -5,6 +5,9 @@ Changes
 0.2 (unreleased)
 ----------------
 
+- Python 3 compatibility.
+  [rnix]
+
 - Fix hex formatting in ``cone.sql.model.GUID.process_bind_param``.
   [rnix]
 
