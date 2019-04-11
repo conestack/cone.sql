@@ -1,9 +1,10 @@
-from sqlalchemy import MetaData
+from cone.app import main_hook
 from sqlalchemy import engine_from_config
+from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
-import cone.app
+from zope.sqlalchemy import register
 
 
 ###############################################################################
@@ -13,6 +14,7 @@ import cone.app
 # key used for storing SQL session on request environment
 session_key = 'cone.sql.session'
 
+
 def get_session(request):
     """Return request related SQL session.
     """
@@ -21,6 +23,7 @@ def get_session(request):
 
 # session setup handler registry
 _session_setup_handlers = list()
+
 
 def sql_session_setup(ob):
     """Decorator for registering SQL session setup handlers.
@@ -76,6 +79,7 @@ class WSGISQLSession(object):
     def __call__(self, environ, start_response):
         session = self.maker()
         setup_session(session)
+        register(session)
         environ[self.session_key] = session
         try:
             result = self.next_app(environ, start_response)
@@ -98,14 +102,15 @@ def make_app(next_app, global_conf, **local_conf):
 # Cone startup integration
 ###############################################################################
 
-def initialize_cone_sql(config, global_config, local_config):
+@main_hook
+def initialize_cone_sql(config, global_config, settings):
     """Cone startup application initialization.
     """
     # database initialization
     prefix = 'cone.sql.dbinit.'
-    if local_config.get('%surl' % prefix, None) is None:
+    if settings.get('{}url'.format(prefix), None) is None:  # pragma: no cover
         return
-    engine = engine_from_config(local_config, prefix)
+    config.include('pyramid_retry')
+    config.include('pyramid_tm')
+    engine = engine_from_config(settings, prefix)
     initialize_sql(engine)
-
-cone.app.register_main_hook(initialize_cone_sql)

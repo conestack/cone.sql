@@ -1,3 +1,18 @@
+.. image:: https://img.shields.io/pypi/v/cone.sql.svg
+    :target: https://pypi.python.org/pypi/cone.sql
+    :alt: Latest PyPI version
+
+.. image:: https://img.shields.io/pypi/dm/cone.sql.svg
+    :target: https://pypi.python.org/pypi/cone.sql
+    :alt: Number of PyPI downloads
+
+.. image:: https://travis-ci.org/bluedynamics/cone.sql.svg?branch=master
+    :target: https://travis-ci.org/bluedynamics/cone.sql
+
+.. image:: https://coveralls.io/repos/github/bluedynamics/cone.sql/badge.svg?branch=master
+    :target: https://coveralls.io/github/bluedynamics/cone.sql?branch=master
+
+
 cone.sql
 ========
 
@@ -23,6 +38,8 @@ up the related elements to the WSGI pipeline.
     [app:my_app]
     use = egg:cone.app#main
 
+    tm.commit_veto = pyramid_tm.default_commit_veto
+
     cone.plugins =
         cone.sql
 
@@ -32,10 +49,6 @@ up the related elements to the WSGI pipeline.
     # for use behind nginx
     use = egg:cone.app#remote_addr
 
-    [filter:tm]
-    use = egg:repoze.tm2#tm
-    commit_veto = repoze.tm:default_commit_veto
-
     [filter:session]
     use = egg:cone.sql#session
     sqlalchemy.url = sqlite:///%(here)s/var/sqlite/my_db.db
@@ -43,8 +56,6 @@ up the related elements to the WSGI pipeline.
     [pipeline:main]
     pipeline =
         remote_addr
-        egg:repoze.retry#retry
-        tm
         session
         my_app
 

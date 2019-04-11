@@ -14,16 +14,24 @@ from plumber import default
 from plumber import finalize
 from plumber import override
 from plumber import plumbing
-from pyramid.i18n import TranslationStringFactory
 from pyramid.threadlocal import get_current_request
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.types import CHAR
 from sqlalchemy.types import TypeDecorator
 from zope.interface import implementer
+import sys
 import uuid
+
+
+###############################################################################
+# Compat
+###############################################################################
+
+IS_PY2 = sys.version_info[0] < 3
+UNICODE_TYPE = unicode if IS_PY2 else str
 
 
 ###############################################################################
@@ -53,10 +61,10 @@ class GUID(TypeDecorator):
             return str(value)
         else:
             if not isinstance(value, uuid.UUID):
-                return "%.32x" % uuid.UUID(value)
+                return "%.32x" % int(uuid.UUID(value))
             else:
                 # hexstring
-                return "%.32x" % value
+                return "%.32x" % int(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
@@ -81,7 +89,7 @@ class SQLTableStorage(Behavior):
     # type
     data_type_converters = default({
         GUID: uuid.UUID,
-        String: unicode,
+        String: UNICODE_TYPE,
         Integer: int,
     })
 
@@ -101,7 +109,7 @@ class SQLTableStorage(Behavior):
             converter = self.data_type_converters[primary_key_type]
             primary_key_value = converter(name)
             return primary_key_value
-        except Exception, e:
+        except Exception as e:
             msg = (
                 'Failed to convert node name to expected primary key '
                 'data type: {}'
@@ -233,7 +241,9 @@ class SQLRowStorage(Behavior):
         raise KeyError(name)
 
     @finalize
-    def __delitem__(self, name):
+    def __delitem__(self, name):  # pragma: no cover
+        # not reached by default SQLRowNode, KeyError already thrown in
+        # Lifecycle plumbing Behavior
         raise KeyError(name)
 
     @finalize
