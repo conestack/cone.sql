@@ -1,17 +1,15 @@
 from cone.app.testing import Security
-from cone.sql import SQLBase
+from cone.sql import initialize_sql
 from cone.sql import setup_session
 from cone.sql import sql_session_setup
-from cone.sql import initialize_sql
+from cone.sql import SQLBase
 from cone.sql.model import GUID
 from sqlalchemy import Column
-from sqlalchemy import Integer
-from sqlalchemy import String
 from sqlalchemy import create_engine
 from sqlalchemy import event
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy.orm import sessionmaker
-import os
-import pyramid_zcml
 import shutil
 import tempfile
 
@@ -22,6 +20,7 @@ import tempfile
 
 # override to test if event listener gets called properly
 test_after_flush = None
+
 
 def after_flush(session, flush_context):
     """Test event listener.

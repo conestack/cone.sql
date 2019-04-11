@@ -1,9 +1,9 @@
-from sqlalchemy import MetaData
+from cone.app import main_hook
 from sqlalchemy import engine_from_config
+from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
-import cone.app
 
 
 ###############################################################################
@@ -13,6 +13,7 @@ import cone.app
 # key used for storing SQL session on request environment
 session_key = 'cone.sql.session'
 
+
 def get_session(request):
     """Return request related SQL session.
     """
@@ -21,6 +22,7 @@ def get_session(request):
 
 # session setup handler registry
 _session_setup_handlers = list()
+
 
 def sql_session_setup(ob):
     """Decorator for registering SQL session setup handlers.
@@ -98,6 +100,7 @@ def make_app(next_app, global_conf, **local_conf):
 # Cone startup integration
 ###############################################################################
 
+@main_hook
 def initialize_cone_sql(config, global_config, local_config):
     """Cone startup application initialization.
     """
@@ -107,5 +110,3 @@ def initialize_cone_sql(config, global_config, local_config):
         return
     engine = engine_from_config(local_config, prefix)
     initialize_sql(engine)
-
-cone.app.register_main_hook(initialize_cone_sql)

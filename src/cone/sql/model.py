@@ -14,11 +14,10 @@ from plumber import default
 from plumber import finalize
 from plumber import override
 from plumber import plumbing
-from pyramid.i18n import TranslationStringFactory
 from pyramid.threadlocal import get_current_request
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.types import CHAR
 from sqlalchemy.types import TypeDecorator
