@@ -5,7 +5,17 @@ Changes
 0.2 (unreleased)
 ----------------
 
-- No changes yet.
+- Register SQL session to transaction manager with ``zope.sqlalchemy.register``.
+  [rnix]
+
+- Use ``pyramid_tm`` instead of ``repoze.tm2``.
+  [rnix]
+
+- Use ``pyramid_retry`` instead of ``repoze.retry``.
+  [rnix]
+
+- Upgrade to ``cone.app`` 1.0b1.
+  [rnix]
 
 
 0.1 (2017-03-28)

@@ -95,3 +95,6 @@ class SQLLayer(Security):
         session = maker()
         setup_session(session)
         self.sql_session = session
+
+
+sql_layer = SQLLayer()

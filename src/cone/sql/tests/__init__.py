@@ -4,7 +4,7 @@ import unittest
 
 def test_suite():
     from cone.sql.tests import test_sql
-    from cone.app.tests import test_model
+    from cone.sql.tests import test_model
 
     suite = unittest.TestSuite()
 

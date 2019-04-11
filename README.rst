@@ -23,6 +23,8 @@ up the related elements to the WSGI pipeline.
     [app:my_app]
     use = egg:cone.app#main
 
+    tm.commit_veto = pyramid_tm.default_commit_veto
+
     cone.plugins =
         cone.sql
 
@@ -32,10 +34,6 @@ up the related elements to the WSGI pipeline.
     # for use behind nginx
     use = egg:cone.app#remote_addr
 
-    [filter:tm]
-    use = egg:repoze.tm2#tm
-    commit_veto = repoze.tm:default_commit_veto
-
     [filter:session]
     use = egg:cone.sql#session
     sqlalchemy.url = sqlite:///%(here)s/var/sqlite/my_db.db
@@ -43,8 +41,6 @@ up the related elements to the WSGI pipeline.
     [pipeline:main]
     pipeline =
         remote_addr
-        egg:repoze.retry#retry
-        tm
         session
         my_app
 

@@ -22,7 +22,16 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.types import CHAR
 from sqlalchemy.types import TypeDecorator
 from zope.interface import implementer
+import sys
 import uuid
+
+
+###############################################################################
+# Compat
+###############################################################################
+
+IS_PY2 = sys.version_info[0] < 3
+UNICODE_TYPE = unicode if IS_PY2 else str
 
 
 ###############################################################################
@@ -80,7 +89,7 @@ class SQLTableStorage(Behavior):
     # type
     data_type_converters = default({
         GUID: uuid.UUID,
-        String: unicode,
+        String: UNICODE_TYPE,
         Integer: int,
     })
 
@@ -100,7 +109,7 @@ class SQLTableStorage(Behavior):
             converter = self.data_type_converters[primary_key_type]
             primary_key_value = converter(name)
             return primary_key_value
-        except Exception, e:
+        except Exception as e:
             msg = (
                 'Failed to convert node name to expected primary key '
                 'data type: {}'

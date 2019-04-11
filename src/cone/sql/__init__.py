@@ -4,6 +4,7 @@ from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
+from zope.sqlalchemy import register
 
 
 ###############################################################################
@@ -78,6 +79,7 @@ class WSGISQLSession(object):
     def __call__(self, environ, start_response):
         session = self.maker()
         setup_session(session)
+        register(session)
         environ[self.session_key] = session
         try:
             result = self.next_app(environ, start_response)
@@ -101,12 +103,15 @@ def make_app(next_app, global_conf, **local_conf):
 ###############################################################################
 
 @main_hook
-def initialize_cone_sql(config, global_config, local_config):
+def initialize_cone_sql(config, global_config, settings):
     """Cone startup application initialization.
     """
+    config.include('pyramid_retry')
+    config.include('pyramid_tm')
+
     # database initialization
     prefix = 'cone.sql.dbinit.'
-    if local_config.get('%surl' % prefix, None) is None:
+    if settings.get('{}url'.format(prefix), None) is None:
         return
-    engine = engine_from_config(local_config, prefix)
+    engine = engine_from_config(settings, prefix)
     initialize_sql(engine)
