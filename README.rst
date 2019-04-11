@@ -1,3 +1,18 @@
+.. image:: https://img.shields.io/pypi/v/cone.sql.svg
+    :target: https://pypi.python.org/pypi/cone.sql
+    :alt: Latest PyPI version
+
+.. image:: https://img.shields.io/pypi/dm/cone.sql.svg
+    :target: https://pypi.python.org/pypi/cone.sql
+    :alt: Number of PyPI downloads
+
+.. image:: https://travis-ci.org/bluedynamics/cone.sql.svg?branch=master
+    :target: https://travis-ci.org/bluedynamics/cone.sql
+
+.. image:: https://coveralls.io/repos/github/bluedynamics/cone.sql/badge.svg?branch=master
+    :target: https://coveralls.io/github/bluedynamics/cone.sql?branch=master
+
+
 cone.sql
 ========
 

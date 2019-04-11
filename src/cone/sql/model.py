@@ -241,7 +241,9 @@ class SQLRowStorage(Behavior):
         raise KeyError(name)
 
     @finalize
-    def __delitem__(self, name):
+    def __delitem__(self, name):  # pragma: no cover
+        # not reached by default SQLRowNode, KeyError already thrown in
+        # Lifecycle plumbing Behavior
         raise KeyError(name)
 
     @finalize

@@ -106,12 +106,11 @@ def make_app(next_app, global_conf, **local_conf):
 def initialize_cone_sql(config, global_config, settings):
     """Cone startup application initialization.
     """
-    config.include('pyramid_retry')
-    config.include('pyramid_tm')
-
     # database initialization
     prefix = 'cone.sql.dbinit.'
-    if settings.get('{}url'.format(prefix), None) is None:
+    if settings.get('{}url'.format(prefix), None) is None:  # pragma: no cover
         return
+    config.include('pyramid_retry')
+    config.include('pyramid_tm')
     engine = engine_from_config(settings, prefix)
     initialize_sql(engine)
