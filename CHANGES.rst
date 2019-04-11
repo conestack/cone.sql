@@ -5,6 +5,9 @@ Changes
 0.2 (unreleased)
 ----------------
 
+- Fix hex formatting in ``cone.sql.model.GUID.process_bind_param``.
+  [rnix]
+
 - Register SQL session to transaction manager with ``zope.sqlalchemy.register``.
   [rnix]
 
