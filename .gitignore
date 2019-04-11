@@ -3,3 +3,5 @@
 /py3/
 /dist/
 /src/cone.sql.egg-info/
+/.coverage
+/htmlcov/
