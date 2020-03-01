@@ -65,7 +65,8 @@ class TestSQL(NodeTestCase):
 
         # Dummy WSGI environment
         environ = {
-            'REQUEST_METHOD': 'GET'
+            'REQUEST_METHOD': 'GET',
+            'PATH_INFO': '/'
         }
 
         # Dummy ``start_response`` callback
