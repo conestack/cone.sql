@@ -5,6 +5,9 @@ Changes
 0.2 (unreleased)
 ----------------
 
+- Add SQL based principal ACL support.
+  [rnix]
+
 - Python 3 compatibility.
   [rnix]
 
@@ -28,4 +31,4 @@ Changes
 ----------------
 
 - Initial work.
-  [rnix, 2017-18-01]
+  [rnix]

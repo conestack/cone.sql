@@ -166,6 +166,37 @@ request via ``get_session`` and perform arbitrary operations on it.
     result = session.query(MyRecord).all()
 
 
+Principal ACL's
+---------------
+
+SQL based Principal ACL's are implemented in ``cone.sql.acl``. The related
+table gets created as soon as you import from this module.
+
+Using ``SQLPrincipalACL`` requires the model to implement ``node.interfaces.IUUID``.
+
+.. code-block:: python
+
+    from cone.sql.acl import SQLPrincipalACL
+    from node.base import BaseNode
+    from node.interfaces import IUUID
+    from plumber import plumbing
+    from pyramid.security import Allow
+    from zope.interface import implementer
+    import uuid as uuid_module
+
+    @implementer(IUUID)
+    @plumbing(SQLPrincipalACL)
+    class SQLPrincipalACLNode(BaseNode):
+        uuid = uuid_module.UUID('1a82fa87-08d6-4e48-8bc2-97ee5a52726d')
+
+        @property
+        def __acl__(self):
+            return [
+                (Allow, 'role:editor', ['edit']),
+                (Allow, 'role:manager', ['manage']),
+            ]
+
+
 TODO
 ----
 
@@ -177,11 +208,18 @@ Test coverage
 
 Summary of the test coverage report::
 
-    lines   cov%   module
-       50   100%   cone.sql.__init__
-      186    99%   cone.sql.model
-       57   100%   cone.sql.testing
-       18   100%   cone.sql.tests
+    Name                               Stmts   Miss  Cover
+    ------------------------------------------------------
+    src/cone/sql/__init__.py              50      0   100%
+    src/cone/sql/acl.py                   62      0   100%
+    src/cone/sql/model.py                162      0   100%
+    src/cone/sql/testing.py               36      0   100%
+    src/cone/sql/tests/__init__.py        18      0   100%
+    src/cone/sql/tests/test_acl.py        86      0   100%
+    src/cone/sql/tests/test_model.py     225      0   100%
+    src/cone/sql/tests/test_sql.py        38      0   100%
+    ------------------------------------------------------
+    TOTAL                                677      0   100%
 
 
 Contributors
