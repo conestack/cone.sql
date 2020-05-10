@@ -29,26 +29,26 @@ class UsersTestCase(unittest.TestCase):
         print(session)
 
     @temp_database
-    def create_user(self, session):
+    def test_create_user(self, session):
         for name in ["phil", "donald", "dagobert", "daisy"]:
-            session.add(User(name=name))
+            session.add(User(id=name))
 
         session.flush()
 
         users = session.query(User).all()
-        usernames = [u.name for u in users]
+        usernames = [u.id for u in users]
         assert "phil" in usernames
 
-        for group in ["admins", "loosers", "members", "editors"]:
-            session.add(Group(name=group))
+        for group in ["admins", "losers", "members", "editors"]:
+            session.add(Group(id=group))
 
         session.flush()
 
-        phil = session.query(User).filter(User.name == "phil").one()
-        donald = session.query(User).filter(User.name == "donald").one()
-        admins = session.query(Group).filter(Group.name == "admins").one()
-        losers = session.query(Group).filter(Group.name == "losers").one()
-        members = session.query(Group).filter(Group.name == "members").one()
+        phil = session.query(User).filter(User.id == "phil").one()
+        donald = session.query(User).filter(User.id == "donald").one()
+        admins = session.query(Group).filter(Group.id == "admins").one()
+        losers = session.query(Group).filter(Group.id == "losers").one()
+        members = session.query(Group).filter(Group.id == "members").one()
 
         phil.groups.append(admins)
         phil.groups.append(members)
@@ -57,14 +57,14 @@ class UsersTestCase(unittest.TestCase):
         donald.groups.append(members)
         session.flush()
 
-        phil1 = session.query(User).filter(User.name == "phil").one()
-        donald1 = session.query(User).filter(User.name == "donald").one()
+        phil1 = session.query(User).filter(User.id == "phil").one()
+        donald1 = session.query(User).filter(User.id == "donald").one()
 
         assert admins in phil1.groups
         assert members in phil1.groups
 
-        losers1 = session.query(Group).filter(Group.name == "losers")
-        members = session.query(Group).filter(Group.name ==  "members")
+        losers1 = session.query(Group).filter(Group.id == "losers")
+        members = session.query(Group).filter(Group.id ==  "members")
 
         assert phil in members.users
         assert donald in members.users

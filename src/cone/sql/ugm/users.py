@@ -12,13 +12,13 @@ Base = declarative_base()
 
 class Role(Base):
     __tablename__ = "role"
-    name = Column(String, index=True, primary_key=True)
+    id = Column(String, index=True, primary_key=True)
 
 
 class User(Base):
     __tablename__ = "user"
-    id = Column(GUID, default=lambda: str(uuid.uuid4()), index=True, primary_key=True)
-    name = Column(String, nullable=False, index=True)
+    # id = Column(GUID, default=lambda: str(uuid.uuid4()), index=True, primary_key=True)
+    id = Column(String, nullable=False, index=True, primary_key=True)
     groups = association_proxy("group_assignments", "groups",
                               creator=lambda c: GroupAssignment(user=c))
     group_assignments = relationship(
@@ -30,8 +30,8 @@ class User(Base):
 
 class Group(Base):
     __tablename__ = "group"
-    id = Column(GUID, default=lambda: str(uuid.uuid4()), index=True, primary_key=True)
-    name = Column(String, nullable=False, index=True)
+    # id = Column(GUID, default=lambda: str(uuid.uuid4()), index=True, primary_key=True)
+    id = Column(String, nullable=False, index=True, primary_key=True)
     users = association_proxy("group_assignments", "users",
                               creator=lambda c: GroupAssignment(group=c))
     group_assignments = relationship(
@@ -43,5 +43,5 @@ class Group(Base):
 
 class GroupAssignment(Base):
     __tablename__ = 'group_assignment'
-    group_id = Column(GUID, ForeignKey('group.id', deferrable=True, ), nullable=False, primary_key=True)
-    user_id = Column(GUID, ForeignKey('user.id', deferrable=True), nullable=False, primary_key=True)
+    group_id = Column(String, ForeignKey('group.id', deferrable=True, ), nullable=False, primary_key=True)
+    user_id = Column(String, ForeignKey('user.id', deferrable=True), nullable=False, primary_key=True)
