@@ -4,7 +4,7 @@ from typing import Callable
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from cone.sql.ugm.users import SQLPrincipal as Principal, SQLUser as User, Base, SQLGroup as Group
+from cone.sql.ugm import SQLPrincipal as Principal, SQLUser as User, Base, SQLGroup as Group
 
 def temp_database(fn: Callable[[Session], None]):
     """
@@ -49,7 +49,7 @@ class UsersTestCase(unittest.TestCase):
         losers = session.query(Group).filter(Group.id == "losers").one()
         members = session.query(Group).filter(Group.id == "members").one()
 
-        phil.roles = ["manager", "member"]
+        phil.principal_roles = ["manager", "member"]
 
         phil.groups.append(admins)
         phil.groups.append(members)
@@ -61,7 +61,7 @@ class UsersTestCase(unittest.TestCase):
         phil1 = session.query(User).filter(User.id == "phil").one()
         donald1 = session.query(User).filter(User.id == "donald").one()
 
-        assert "manager" in phil1.roles
+        assert "manager" in phil1.principal_roles
 
         assert admins in phil1.groups
         assert members in phil1.groups
