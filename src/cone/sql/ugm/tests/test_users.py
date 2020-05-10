@@ -4,8 +4,7 @@ from typing import Callable
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from cone.sql.ugm.users import User, Base, Group
-
+from cone.sql.ugm.users import SQLPrincipal as Principal, SQLUser as User, Base, SQLGroup as Group
 
 def temp_database(fn: Callable[[Session], None]):
     """
@@ -39,7 +38,7 @@ class UsersTestCase(unittest.TestCase):
         usernames = [u.id for u in users]
         assert "phil" in usernames
 
-        for group in ["admins", "losers", "members", "editors"]:
+        for group in ["admins", "losers", "members", "editors", "phil"]:
             session.add(Group(id=group))
 
         session.flush()
@@ -49,6 +48,8 @@ class UsersTestCase(unittest.TestCase):
         admins = session.query(Group).filter(Group.id == "admins").one()
         losers = session.query(Group).filter(Group.id == "losers").one()
         members = session.query(Group).filter(Group.id == "members").one()
+
+        phil.roles = ["manager", "member"]
 
         phil.groups.append(admins)
         phil.groups.append(members)
@@ -60,11 +61,19 @@ class UsersTestCase(unittest.TestCase):
         phil1 = session.query(User).filter(User.id == "phil").one()
         donald1 = session.query(User).filter(User.id == "donald").one()
 
+        assert "manager" in phil1.roles
+
         assert admins in phil1.groups
         assert members in phil1.groups
 
-        losers1 = session.query(Group).filter(Group.id == "losers")
-        members = session.query(Group).filter(Group.id ==  "members")
+        losers1 = session.query(Group).filter(Group.id == "losers").one()
+        members = session.query(Group).filter(Group.id ==  "members").one()
+        phil_group = session.query(Group).filter(Group.id ==  "phil").one()
+
+        assert phil_group.id == phil.id
+        assert phil_group.guid != phil.guid
 
         assert phil in members.users
         assert donald in members.users
+
+        # now try
