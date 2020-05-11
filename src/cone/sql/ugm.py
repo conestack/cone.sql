@@ -82,6 +82,10 @@ def has_autocommit():
 class PrincipalBehavior(Behavior):
     record: SQLPrincipal = None
 
+    @property
+    def id(self):
+        return self.record.id
+
     def __init__(self, record):
         self.record = record
 
@@ -115,18 +119,8 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     def group_ids(self):
         return [g.id for g in self.groups]
 
-    # Leaf API hardening
-    def __getitem__(self, key):
-        raise NotImplementedError('User does not support ``__getitem__``')
-
-    def __setitem__(self, key, value):
-        raise NotImplementedError('User does not support ``__setitem__``')
-
-    def __delitem__(self, key):
-        raise NotImplementedError('User does not support ``__delitem__``')
-
-    def __iter__(self):
-        return iter([])
+    @property
+    def groups(self):
 
 
 class AuthenticationBehavior(Behavior):
@@ -143,23 +137,23 @@ class AuthenticationBehavior(Behavior):
         if id not in self.storage:
             return False
         # cannot authenticate user with unset password
-        if not self.storage[id]:
+        if not id in self:
             return False
-        return self._chk_pw(pw, self.storage[id])
+        return self._chk_pw(pw, self.get_hashed_pw(id))
 
     @default
     def passwd(self, id, oldpw, newpw):
         if id not in self.storage:
             raise ValueError(u"User with id '{}' does not exist.".format(id))
         if oldpw is not None:
-            if not self._chk_pw(oldpw, self.storage[id]):
+            if not self._chk_pw(oldpw, self.get_hashed_pw(id)):
                 raise ValueError('Old password does not match.')
         salt = os.urandom(self.salt_len)
         newpw = newpw.encode(ENCODING) \
             if isinstance(newpw, UNICODE_TYPE) \
             else newpw
         hashed = base64.b64encode(self.hash_func(newpw + salt).digest() + salt)
-        self.storage[id] = hashed.decode()
+        self.set_hashed_pw(id, hashed.decode())
         self()
 
     @default
