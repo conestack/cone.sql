@@ -335,7 +335,6 @@ class UgmBehavior(BaseUgm):
 
     @default
     def __init__(self):
-        # self.session = session
         self.groups = Groups()
         self.users = Users()
 
@@ -362,3 +361,4 @@ class UgmBehavior(BaseUgm):
     Nodify)
 class Ugm(object):
     pass
+

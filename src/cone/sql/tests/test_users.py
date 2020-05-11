@@ -94,7 +94,8 @@ class TestUserNodes(NodeTestCase):
     layer = testing.sql_layer
 
     def test_node_users(self):
+        breakpoint()
         ugm = Ugm()
         users = ugm.users
         groups = ugm.groups
-        groups.create("phil")
+        users.create("phil")
