@@ -135,18 +135,19 @@ class AuthenticationBehavior(Behavior):
 
     @default
     def authenticate(self, id=None, pw=None):
-        if id not in self.storage:
-            return False
         # cannot authenticate user with unset password
         if id not in self:
             return False
 
         hpw = self.get_hashed_pw(id)
-        return self._chk_pw(pw, hpw) if hpw else False
+        if hpw:
+            return self._chk_pw(pw, hpw)
+        else:
+            return False
 
     @default
     def passwd(self, id, oldpw, newpw):
-        if id not in self.storage:
+        if id not in self:
             raise ValueError(u"User with id '{}' does not exist.".format(id))
         if oldpw is not None:
             if not self._chk_pw(oldpw, self.get_hashed_pw(id)):
