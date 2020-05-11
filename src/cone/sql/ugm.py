@@ -172,12 +172,12 @@ class AuthenticationBehavior(Behavior):
             else plain
         return hashed == self.hash_func(plain + salt).digest() + salt
 
-    @property
-    def hashed_pw(self):
+    def get_hashed_pw(self, id):
+        """must be implemented by plumbed class"""
         ...
 
-    @hashed_pw.setter
-    def hashed_pw(self, hpw):
+    def set_hashed_pw(self, id, hpw):
+        """must be implemented by plumbed class"""
         ...
 
 
