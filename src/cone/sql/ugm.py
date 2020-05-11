@@ -172,6 +172,13 @@ class AuthenticationBehavior(Behavior):
             else plain
         return hashed == self.hash_func(plain + salt).digest() + salt
 
+    @property
+    def hashed_pw(self):
+        ...
+
+    @hashed_pw.setter
+    def hashed_pw(self, hpw):
+        ...
 
 
 @plumbing(
