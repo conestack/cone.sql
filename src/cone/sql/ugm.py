@@ -1,7 +1,6 @@
 import hashlib
 import os
 import uuid
-from abc import ABC
 from typing import List
 
 from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate
@@ -11,6 +10,8 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 
 from cone.sql.model import GUID, SQLRowNodeAttributes, SQLSession
+from cone.sql import SQLBase as Base
+
 from sqlalchemy.orm import relationship, Session, object_session
 
 from node.ext.ugm import (
@@ -27,7 +28,7 @@ from node.ext.ugm import (
 # SQLAlchemy model classes
 ####################################################
 
-Base = declarative_base()
+# Base = declarative_base()
 
 
 class SQLPrincipal(Base):
@@ -73,18 +74,16 @@ class SQLUser(SQLPrincipal):
 # Node classes
 ####################################################
 
-autocommit = os.environ.get("UGM_SQL_AUTOCOMMIT", False)
+def has_autocommit():
+    ac = os.environ.get("UGM_SQL_AUTOCOMMIT", "False")
 
 
-class PrincipalBehavior(BasePrincipal):
-    _model: SQLPrincipal = None
 
-    def __init__(self, model):
-        self._model = model
+class PrincipalBehavior(Behavior):
+    record: SQLPrincipal = None
 
-    @property
-    def object_session(self):
-        return object_session(self)
+    def __init__(self, record):
+        self.record = record
 
     def add_role(self, role: str):
         if role not in self.roles:
@@ -96,21 +95,21 @@ class PrincipalBehavior(BasePrincipal):
 
     @property
     def roles(self) -> List[str]:
-        return self._model.principal_roles
+        return self.record.principal_roles
     
     @roles.setter
     def roles(self, roles: List[str]):
-        self._model.principal_roles = roles
+        self.record.principal_roles = roles
 
     def attributes_factory(self, name, parent):
         return SQLRowNodeAttributes(name, parent, self.record)
 
     def __call__(self):
-        if autocommit:
+        if autocommit():
             self._session.commit()
 
 
-class UserBehavior(PrincipalBehavior):
+class UserBehavior(PrincipalBehavior, BaseUser):
 
     @property
     def group_ids(self):
@@ -192,7 +191,7 @@ class User(object):
     pass
 
 
-class GroupBehavior(PrincipalBehavior):
+class GroupBehavior(PrincipalBehavior, BaseGroup):
     def __setitem__(self, key, value):
         self.data[key] = value
 
