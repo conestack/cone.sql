@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import os
 import uuid
@@ -9,7 +10,7 @@ from sqlalchemy import Column, String, ForeignKey, JSON
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 
-from cone.sql.model import GUID, SQLRowNodeAttributes, SQLSession
+from cone.sql.model import GUID, SQLRowNodeAttributes, SQLSession, UNICODE_TYPE
 from cone.sql import SQLBase as Base
 
 from sqlalchemy.orm import relationship, Session, object_session
@@ -24,6 +25,7 @@ from node.ext.ugm import (
     Ugm as BaseUgm
 )
 
+
 ####################################################
 # SQLAlchemy model classes
 ####################################################
@@ -36,7 +38,7 @@ class SQLPrincipal(Base):
     discriminator = Column(String)
     __mapper_args__ = {'polymorphic_on': discriminator}
     guid = Column(GUID, default=lambda: str(uuid.uuid4()), index=True, primary_key=True)
-    data = Column(JSON)
+    data = Column(JSON, )
     principal_roles = Column(JSON, default=[])
 
 
@@ -44,7 +46,7 @@ class SQLGroup(SQLPrincipal):
     __mapper_args__ = {'polymorphic_identity': 'sqlgroup'}
     guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     __tablename__ = 'group'
-    id = Column(String)
+    id = Column(String, unique=True)
     users = association_proxy("sqlgroupassignments", "users",
                               creator=lambda c: SQLGroupAssignment(users=c))
     sqlgroupassignments = relationship('SQLGroupAssignment', backref='groups',
@@ -62,8 +64,8 @@ class SQLUser(SQLPrincipal):
     guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     __tablename__ = 'user'
     login = Column(String)
-    id = Column(String)
-    passwd_encrypted = Column(String)
+    id = Column(String, unique=True)
+    hashed_pw = Column(String)
     groups = association_proxy("sqlgroupassignments", "groups",
                                creator=lambda c: SQLGroupAssignment(groups=c))
     sqlgroupassignments = relationship('SQLGroupAssignment', backref='users',
@@ -75,24 +77,34 @@ class SQLUser(SQLPrincipal):
 ####################################################
 
 def has_autocommit():
-    ac = os.environ.get("UGM_SQL_AUTOCOMMIT", "False")
+    ac = os.environ.get("UGM_SQL_AUTOCOMMIT", "False").lower()
+    if ac not in ["true", "false"]:
+        raise ValueError(f"autocommit must be true/false, got {ac}")
 
+    if ac == "true":
+        return True
+    else:
+        return False
 
 
 class PrincipalBehavior(Behavior):
-    record: SQLPrincipal = None
+    record: SQLPrincipal = default(None)
 
+    @default
     @property
     def id(self):
         return self.record.id
 
+    @default
     def __init__(self, record):
         self.record = record
 
+    @default
     def add_role(self, role: str):
         if role not in self.roles:
             self.roles = self.roles + [role]
 
+    @default
     def remove_role(self, role: str):
         if role in self.roles:
             self.roles = [r for r in self.roles if r != role]  # to trigger the json field
@@ -100,16 +112,19 @@ class PrincipalBehavior(Behavior):
     @property
     def roles(self) -> List[str]:
         return self.record.principal_roles
-    
+
+    @default
     @roles.setter
     def roles(self, roles: List[str]):
         self.record.principal_roles = roles
 
+    @default
     def attributes_factory(self, name, parent):
         return SQLRowNodeAttributes(name, parent, self.record)
 
+    @default
     def __call__(self):
-        if autocommit():
+        if has_autocommit():
             self._session.commit()
 
 
@@ -124,11 +139,15 @@ class UserBehavior(PrincipalBehavior, BaseUser):
         return [Group(g) for g in self.record.groups]
 
 
+ENCODING = 'utf-8'
+
+
 class AuthenticationBehavior(Behavior):
     """
     handles password authentication for ugm
     contract:
-    assumes that the plumbed class implements the IUsers interface
+    - the plumbed class implements the IUsers interface
+    - the plumbed class implements get_hashed_pw(id: str) and set_hashed_pw(id: str, hpw: str)
     """
     salt_len = default(8)
     hash_func = default(hashlib.sha256)
@@ -169,13 +188,15 @@ class AuthenticationBehavior(Behavior):
             else plain
         return hashed == self.hash_func(plain + salt).digest() + salt
 
+    @default
     def get_hashed_pw(self, id):
         """must be implemented by plumbed class"""
-        ...
+        raise NotImplementedError("get_hashed_pw(id: str) -> str must be implemented")
 
+    @default
     def set_hashed_pw(self, id, hpw):
         """must be implemented by plumbed class"""
-        ...
+        raise NotImplementedError("set_hashed_pw(id: str, hpw: str) must be implemented")
 
 
 @plumbing(
@@ -190,13 +211,13 @@ class User(object):
 
 
 class GroupBehavior(PrincipalBehavior, BaseGroup):
-    def __setitem__(self, key, value):
-        self.data[key] = value
 
+    @default
     @property
     def member_ids(self):
         return [u.id for u in self.users]
 
+    @default
     def add(self, id: str):
         raise NotImplementedError
 
@@ -214,16 +235,20 @@ class Group(object):
 
 class PrincipalsBehavior:
 
+    @default
     def search(self, **kw):
         raise NotImplementedError
 
+    @default
     def create(self, _id, **kw):
         raise NotImplementedError
 
+    @default
     def __call__(self):
-        if autocommit:
+        if has_autocommit:
             self.session.commit()
 
+    @default
     def invalidate(self, key=None):
         """
         ATM nothing to do here, when we start using caching principals we must remove them here
@@ -232,28 +257,39 @@ class PrincipalsBehavior:
 
 class UsersBehavior(PrincipalsBehavior, BaseUsers):
 
+    @default
     def id_for_login(self, login):
         raise NotImplementedError
 
+    @default
     def __getitem__(self, id, default=None):
         user = self.session.query(SQLUser).filter(SQLUser.id == id).one()
         return User
 
+    @default
     def authenticate(self, id=None, pw=None):
         raise NotImplementedError
 
+    @default
     def passwd(self, id, oldpw, newpw):
         raise NotImplementedError
 
+    @default
     def create(self, _id, **kw):
         login = kw.pop("login", None)
         sqluser = SQLUser(id=_id, login=login, data=kw)
         self.session.add(sqluser)
         u = User(sqluser)
 
+    @default
+    def get_hashed_pw(self, id):
+        user = self[id]
+        return user.record.hashed_pw
+
 
 @plumbing(
     UsersBehavior,
+    AuthenticationBehavior,
     NodeChildValidate,
     Nodespaces,
     Adopt,
@@ -267,12 +303,15 @@ class Users(object):
 
 class GroupsBehavior(PrincipalsBehavior, BaseGroups):
 
+    @default
     def search(self, **kw):
         raise NotImplementedError
 
+    @default
     def create(self, _id: str, **kw):
         raise NotImplementedError
 
+    @default
     def invalidate(self, key=None):
         raise NotImplementedError
 
@@ -294,21 +333,25 @@ class Ugm(BaseUgm):
     users: Users
     groups: Groups
 
+    @default
     def __init__(self):
         # self.session = session
         self.groups = Groups()
         self.users = Users()
 
-    def __call__(self):
-        if autocommit:
+    @default
+    def __call__(self, *a):
+        if has_autocommit():
             self.session.commit()
 
+    @default
     def add_role(self, role, principal):
         raise NotImplementedError
 
+    @default
     def remove_role(self, role, principal):
         raise NotImplementedError
 
+    @default
     def roles(self, principal):
         raise NotImplementedError
-

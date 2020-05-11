@@ -2,10 +2,13 @@ import os
 import unittest
 from typing import Callable
 
+from node.tests import NodeTestCase
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from cone.sql.ugm import SQLPrincipal as Principal, SQLUser, Base, SQLGroup, Ugm, Group, User, Groups, Users
+
+from cone.sql import testing
 
 
 def temp_database(fn: Callable[[Session], None]):
@@ -86,11 +89,12 @@ class UsersTestCase(unittest.TestCase):
 
         session.commit()
 
-    @temp_database
-    def test_node_users(self, session):
+
+
+class TestUserNodes(NodeTestCase):
+    layer = testing.sql_layer
+
+    def test_node_users(self):
         ugm = Ugm()
         users = ugm.users
         groups = ugm.groups
-
-        users.create("phil")
-
