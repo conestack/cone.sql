@@ -4,7 +4,7 @@ import os
 import uuid
 from typing import List
 
-from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate
+from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
 from plumber import plumbing, Behavior, default
 from sqlalchemy import Column, String, ForeignKey, JSON
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -329,9 +329,9 @@ class Groups(object):
     pass
 
 
-class Ugm(BaseUgm):
-    users: Users
-    groups: Groups
+class UgmBehavior(BaseUgm):
+    users: Users = default(None)
+    groups: Groups = default(None)
 
     @default
     def __init__(self):
@@ -355,3 +355,10 @@ class Ugm(BaseUgm):
     @default
     def roles(self, principal):
         raise NotImplementedError
+
+
+@plumbing(
+    UgmBehavior,
+    Nodify)
+class Ugm(object):
+    pass

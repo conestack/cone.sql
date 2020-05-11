@@ -90,7 +90,6 @@ class UsersTestCase(unittest.TestCase):
         session.commit()
 
 
-
 class TestUserNodes(NodeTestCase):
     layer = testing.sql_layer
 
@@ -98,3 +97,4 @@ class TestUserNodes(NodeTestCase):
         ugm = Ugm()
         users = ugm.users
         groups = ugm.groups
+        groups.create("phil")
