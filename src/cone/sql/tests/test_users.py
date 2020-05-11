@@ -98,9 +98,31 @@ class TestUserNodes(NodeTestCase):
         users = ugm.users
         groups = ugm.groups
 
-        phil = users.create("phil")
+        # create some users with attribute
+        ids = ["phil", "donald", "dagobert", "mickey"]
+        for id in ids:
+            users.create(id, height=12)
 
-        print("user:", phil)
+        # give phil a password
+        users.set_hashed_pw("phil", users.hash_passwd("test123"))
+        print("hashed pwd:", users["phil"].record.hashed_pw)
 
+        assert "phil" in users
+        assert not "zworkb" in users
 
+        assert users.authenticate("phil", "test123")
+        assert not users.authenticate("zworkb", "test123")
+
+        # check user attributes
+        assert users["phil"].record.data["height"] == 12
+
+        # check __iter__
+        ids1 = list(users)
+        assert sorted(ids) == sorted(ids1)
+        print(ids1)
+
+        # check login attribute (lets take email)
+        users.create("schlumpf", email="schlumpf@bluedynamics.net")
+
+        # check __setitem__
 

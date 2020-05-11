@@ -2,7 +2,6 @@ import base64
 import hashlib
 import os
 import uuid
-from typing import List
 
 from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
 from plumber import plumbing, Behavior, default, override
@@ -31,6 +30,7 @@ from node.ext.ugm import (
 ####################################################
 
 # Base = declarative_base()
+from sqlalchemy.orm.exc import NoResultFound
 
 
 class SQLPrincipal(Base):
@@ -88,7 +88,7 @@ def has_autocommit():
 
 
 class PrincipalBehavior(Behavior):
-    record: SQLPrincipal = default(None)
+    record = default(None)
 
     @default
     @property
@@ -100,22 +100,22 @@ class PrincipalBehavior(Behavior):
         self.record = record
 
     @default
-    def add_role(self, role: str):
+    def add_role(self, role):
         if role not in self.roles:
             self.roles = self.roles + [role]
 
     @default
-    def remove_role(self, role: str):
+    def remove_role(self, role):
         if role in self.roles:
             self.roles = [r for r in self.roles if r != role]  # to trigger the json field
 
     @property
-    def roles(self) -> List[str]:
+    def roles(self):
         return self.record.principal_roles
 
     @default
     @roles.setter
-    def roles(self, roles: List[str]):
+    def roles(self, roles):
         self.record.principal_roles = roles
 
     @default
@@ -152,7 +152,7 @@ class AuthenticationBehavior(Behavior):
     salt_len = default(8)
     hash_func = default(hashlib.sha256)
 
-    @default
+    @override
     def authenticate(self, id=None, pw=None):
         # cannot authenticate user with unset password
         if id not in self:
@@ -171,13 +171,19 @@ class AuthenticationBehavior(Behavior):
         if oldpw is not None:
             if not self._chk_pw(oldpw, self.get_hashed_pw(id)):
                 raise ValueError('Old password does not match.')
+
+        hpw = self.hash_passwd(newpw)
+        self.set_hashed_pw(id, hpw)
+        self()
+
+    @default
+    def hash_passwd(self, newpw):
         salt = os.urandom(self.salt_len)
         newpw = newpw.encode(ENCODING) \
             if isinstance(newpw, UNICODE_TYPE) \
             else newpw
         hashed = base64.b64encode(self.hash_func(newpw + salt).digest() + salt)
-        self.set_hashed_pw(id, hashed.decode())
-        self()
+        return hashed.decode()
 
     @default
     def _chk_pw(self, plain, hashed):
@@ -218,7 +224,7 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
         return [u.id for u in self.users]
 
     @default
-    def add(self, id: str):
+    def add(self, id):
         raise NotImplementedError
 
 
@@ -263,16 +269,24 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
 
     @default
     def __getitem__(self, id, default=None):
-        user = self.session.query(SQLUser).filter(SQLUser.id == id).one()
-        return User
+        try:
+            sqluser = self.session.query(SQLUser).filter(SQLUser.id == id).one()
+        except NoResultFound as ex:
+            raise KeyError(id)
+        return User(sqluser)
 
     @default
-    def authenticate(self, id=None, pw=None):
-        raise NotImplementedError
+    def __delitem__(self, id):
+        try:
+            sqluser = self.session.query(SQLUser).filter(SQLUser.id == id).one()
+            self.session.delete(sqluser)
+        except NoResultFound as ex:
+            raise KeyError(id)
 
     @default
-    def passwd(self, id, oldpw, newpw):
-        raise NotImplementedError
+    def __iter__(self):
+        users = self.session.query(SQLUser)
+        return map(lambda u: u.id, users)
 
     @default
     def create(self, _id, **kw):
@@ -286,6 +300,11 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     def get_hashed_pw(self, id):
         user = self[id]
         return user.record.hashed_pw
+
+    @default
+    def set_hashed_pw(self, id, hpw):
+        user = self[id]
+        user.record.hashed_pw = hpw
 
 
 @plumbing(
