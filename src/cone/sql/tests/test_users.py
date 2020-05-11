@@ -1,6 +1,5 @@
 import os
 import unittest
-from typing import Callable
 
 from node.tests import NodeTestCase
 from sqlalchemy.engine import Engine, create_engine
@@ -11,7 +10,7 @@ from cone.sql.ugm import SQLPrincipal as Principal, SQLUser, Base, SQLGroup, Ugm
 from cone.sql import testing
 
 
-def temp_database(fn: Callable[[Session], None]):
+def temp_database(fn):
     """
     This decorator creates an in-memory sqlite db for testing the user classes
 
@@ -19,10 +18,10 @@ def temp_database(fn: Callable[[Session], None]):
 
     def wrapper(self):
         curdir = os.path.dirname(__file__)
-        fname = f"{curdir}/test.db"
+        fname = "%s/test.db" % curdir
         if os.path.exists(fname):
             os.remove(fname)
-        uri = f"sqlite:///{fname}"
+        uri = "sqlite:///" + fname
         engine = create_engine(uri)
         Base.metadata.create_all(engine)
         sm = sessionmaker(bind=engine)
@@ -94,8 +93,14 @@ class TestUserNodes(NodeTestCase):
     layer = testing.sql_layer
 
     def test_node_users(self):
-        breakpoint()
+        self.layer.new_request()
         ugm = Ugm()
         users = ugm.users
         groups = ugm.groups
-        users.create("phil")
+
+        phil = users.create("phil")
+
+        print("user:", phil)
+
+
+

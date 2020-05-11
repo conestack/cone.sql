@@ -5,7 +5,7 @@ import uuid
 from typing import List
 
 from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
-from plumber import plumbing, Behavior, default
+from plumber import plumbing, Behavior, default, override
 from sqlalchemy import Column, String, ForeignKey, JSON
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
@@ -95,7 +95,7 @@ class PrincipalBehavior(Behavior):
     def id(self):
         return self.record.id
 
-    @default
+    @override
     def __init__(self, record):
         self.record = record
 
@@ -280,6 +280,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
         sqluser = SQLUser(id=_id, login=login, data=kw)
         self.session.add(sqluser)
         u = User(sqluser)
+        return u
 
     @default
     def get_hashed_pw(self, id):
@@ -333,7 +334,7 @@ class UgmBehavior(BaseUgm):
     users: Users = default(None)
     groups: Groups = default(None)
 
-    @default
+    @override
     def __init__(self):
         self.groups = Groups()
         self.users = Users()
