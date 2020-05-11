@@ -121,6 +121,7 @@ class UserBehavior(PrincipalBehavior, BaseUser):
 
     @property
     def groups(self):
+        return [Group(g) for g in self.record.groups]
 
 
 class AuthenticationBehavior(Behavior):
@@ -137,9 +138,11 @@ class AuthenticationBehavior(Behavior):
         if id not in self.storage:
             return False
         # cannot authenticate user with unset password
-        if not id in self:
+        if id not in self:
             return False
-        return self._chk_pw(pw, self.get_hashed_pw(id))
+
+        hpw = self.get_hashed_pw(id)
+        return self._chk_pw(pw, hpw) if hpw else False
 
     @default
     def passwd(self, id, oldpw, newpw):
