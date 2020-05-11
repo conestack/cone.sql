@@ -1,21 +1,29 @@
+import os
 import unittest
 from typing import Callable
 
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from cone.sql.ugm import SQLPrincipal as Principal, SQLUser as User, Base, SQLGroup as Group
+from cone.sql.ugm import SQLPrincipal as Principal, SQLUser, Base, SQLGroup, Ugm, Group, User, Groups, Users
+
 
 def temp_database(fn: Callable[[Session], None]):
     """
     This decorator creates an in-memory sqlite db for testing the user classes
 
     """
+
     def wrapper(self):
-        engine = create_engine("sqlite:///")
+        curdir = os.path.dirname(__file__)
+        fname = f"{curdir}/test.db"
+        if os.path.exists(fname):
+            os.remove(fname)
+        uri = f"sqlite:///{fname}"
+        engine = create_engine(uri)
         Base.metadata.create_all(engine)
         sm = sessionmaker(bind=engine)
-        session=sm()
+        session = sm()
         fn(self, session)
 
     return wrapper
@@ -30,24 +38,24 @@ class UsersTestCase(unittest.TestCase):
     @temp_database
     def test_create_user(self, session):
         for name in ["phil", "donald", "dagobert", "daisy"]:
-            session.add(User(id=name))
+            session.add(SQLUser(id=name))
 
         session.flush()
 
-        users = session.query(User).all()
+        users = session.query(SQLUser).all()
         usernames = [u.id for u in users]
         assert "phil" in usernames
 
         for group in ["admins", "losers", "members", "editors", "phil"]:
-            session.add(Group(id=group))
+            session.add(SQLGroup(id=group))
 
         session.flush()
 
-        phil = session.query(User).filter(User.id == "phil").one()
-        donald = session.query(User).filter(User.id == "donald").one()
-        admins = session.query(Group).filter(Group.id == "admins").one()
-        losers = session.query(Group).filter(Group.id == "losers").one()
-        members = session.query(Group).filter(Group.id == "members").one()
+        phil = session.query(SQLUser).filter(SQLUser.id == "phil").one()
+        donald = session.query(SQLUser).filter(SQLUser.id == "donald").one()
+        admins = session.query(SQLGroup).filter(SQLGroup.id == "admins").one()
+        losers = session.query(SQLGroup).filter(SQLGroup.id == "losers").one()
+        members = session.query(SQLGroup).filter(SQLGroup.id == "members").one()
 
         phil.principal_roles = ["manager", "member"]
 
@@ -58,17 +66,17 @@ class UsersTestCase(unittest.TestCase):
         donald.groups.append(members)
         session.flush()
 
-        phil1 = session.query(User).filter(User.id == "phil").one()
-        donald1 = session.query(User).filter(User.id == "donald").one()
+        phil1 = session.query(SQLUser).filter(SQLUser.id == "phil").one()
+        donald1 = session.query(SQLUser).filter(SQLUser.id == "donald").one()
 
         assert "manager" in phil1.principal_roles
 
         assert admins in phil1.groups
         assert members in phil1.groups
 
-        losers1 = session.query(Group).filter(Group.id == "losers").one()
-        members = session.query(Group).filter(Group.id ==  "members").one()
-        phil_group = session.query(Group).filter(Group.id ==  "phil").one()
+        losers1 = session.query(SQLGroup).filter(SQLGroup.id == "losers").one()
+        members = session.query(SQLGroup).filter(SQLGroup.id == "members").one()
+        phil_group = session.query(SQLGroup).filter(SQLGroup.id == "phil").one()
 
         assert phil_group.id == phil.id
         assert phil_group.guid != phil.guid
@@ -76,4 +84,13 @@ class UsersTestCase(unittest.TestCase):
         assert phil in members.users
         assert donald in members.users
 
-        # now try
+        session.commit()
+
+    @temp_database
+    def test_node_users(self, session):
+        ugm = Ugm()
+        users = ugm.users
+        groups = ugm.groups
+
+        users.create("phil")
+
