@@ -60,7 +60,7 @@ class SQLLayer(Security):
         # alternatively use postgresql
         os.system("dropdb ugm; createdb ugm")
         engine = create_engine("postgres:///ugm", echo=False)
-
+        #
         # curdir = os.path.dirname(__file__)
         # fname = "%s/test.db" % curdir
         # if os.path.exists(fname):

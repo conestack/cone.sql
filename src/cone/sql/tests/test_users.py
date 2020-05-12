@@ -103,7 +103,6 @@ class TestUserNodes(NodeTestCase):
         for id in ids:
             email = f"{id}@bluedynamics.net"
             users.create(id, height=12, email=email)
-            users[id].record.schas = email
 
         # give phil a password
         users.set_hashed_pw("phil", users.hash_passwd("test123"))

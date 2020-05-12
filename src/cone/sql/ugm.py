@@ -63,7 +63,6 @@ class SQLUser(SQLPrincipal):
     guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     __tablename__ = 'user'
     login = Column(String, unique=True)
-    schas = Column(JSON)
     id = Column(String, unique=True)
     hashed_pw = Column(String)
     groups = association_proxy("sqlgroupassignments", "groups",
@@ -266,8 +265,11 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     def id_for_login(self, login):
         try:
             searchterm = '"%s"' % login  # JSON field works so that the searchterm has to be enclosed in doublequotes
-
-            res = self.session.query(SQLUser).filter(cast(SQLUser.data[SQLUser.login], String) == searchterm).one()
+            # res = self.session.query(SQLUser).filter(cast(SQLUser.data["email"], String) == searchterm).one()
+            if self.session.bind.dialect.name == 'sqlite':
+                res = self.session.query(SQLUser).filter(cast(SQLUser.data[cast("$." + SQLUser.login, String)], String) == searchterm).one()
+            else:
+                res = self.session.query(SQLUser).filter(cast(SQLUser.data[SQLUser.login], String) == searchterm).one()
             return res.id
         except NoResultFound:
             raise KeyError(login)
