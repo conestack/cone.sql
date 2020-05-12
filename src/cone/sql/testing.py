@@ -1,3 +1,5 @@
+import os
+
 from cone.app.testing import Security
 from cone.sql import initialize_sql
 from cone.sql import setup_session
@@ -53,7 +55,19 @@ class SQLLayer(Security):
         return request
 
     def init_sql(self):
-        engine = create_engine('sqlite:///:memory:', echo=False)
+        # engine = create_engine('sqlite:///:memory:', echo=True)
+
+        # alternatively use postgresql
+        os.system("dropdb ugm; createdb ugm")
+        engine = create_engine("postgres:///ugm", echo=False)
+
+        # curdir = os.path.dirname(__file__)
+        # fname = "%s/test.db" % curdir
+        # if os.path.exists(fname):
+        #     os.remove(fname)
+        # uri = "sqlite:///" + fname
+        # engine = create_engine(uri)
+
         initialize_sql(engine)
         maker = sessionmaker(bind=engine)
         session = maker()

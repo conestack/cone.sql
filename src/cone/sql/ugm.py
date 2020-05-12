@@ -5,7 +5,7 @@ import uuid
 
 from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
 from plumber import plumbing, Behavior, default, override
-from sqlalchemy import Column, String, ForeignKey, JSON
+from sqlalchemy import Column, String, ForeignKey, JSON, cast
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -23,7 +23,6 @@ from node.ext.ugm import (
     Principals as BasePrincipals,
     Ugm as BaseUgm
 )
-
 
 ####################################################
 # SQLAlchemy model classes
@@ -63,7 +62,8 @@ class SQLUser(SQLPrincipal):
     __mapper_args__ = {'polymorphic_identity': 'sqluser'}
     guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     __tablename__ = 'user'
-    login = Column(String)
+    login = Column(String, unique=True)
+    schas = Column(JSON)
     id = Column(String, unique=True)
     hashed_pw = Column(String)
     groups = association_proxy("sqlgroupassignments", "groups",
@@ -262,10 +262,15 @@ class PrincipalsBehavior:
 
 
 class UsersBehavior(PrincipalsBehavior, BaseUsers):
-
     @default
     def id_for_login(self, login):
-        raise NotImplementedError
+        try:
+            searchterm = '"%s"' % login  # JSON field works so that the searchterm has to be enclosed in doublequotes
+
+            res = self.session.query(SQLUser).filter(cast(SQLUser.data[SQLUser.login], String) == searchterm).one()
+            return res.id
+        except NoResultFound:
+            raise KeyError(login)
 
     @default
     def __getitem__(self, id, default=None):
@@ -381,4 +386,3 @@ class UgmBehavior(BaseUgm):
     Nodify)
 class Ugm(object):
     pass
-

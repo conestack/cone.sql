@@ -101,7 +101,9 @@ class TestUserNodes(NodeTestCase):
         # create some users with attribute
         ids = ["phil", "donald", "dagobert", "mickey"]
         for id in ids:
-            users.create(id, height=12)
+            email = f"{id}@bluedynamics.net"
+            users.create(id, height=12, email=email)
+            users[id].record.schas = email
 
         # give phil a password
         users.set_hashed_pw("phil", users.hash_passwd("test123"))
@@ -122,7 +124,27 @@ class TestUserNodes(NodeTestCase):
         print(ids1)
 
         # check login attribute (lets take email)
-        users.create("schlumpf", email="schlumpf@bluedynamics.net")
+        # schlumpf and schlumpfine with 2 different login fields
+        users.create("schlumpf", email="schlumpf@bluedynamics.net", login="email")
+        users.create("schlumpfine", nickname="schlumpfinchen", login="nickname")
+
+        schlumpfid = users.id_for_login("schlumpf@bluedynamics.net")
+        schlumpfineid = users.id_for_login("schlumpfinchen")
+
+        assert schlumpfid == "schlumpf"
+        assert schlumpfineid == "schlumpfine"
+
+        users.set_hashed_pw(schlumpfid, users.hash_passwd("schlumpf1"))
+        users.set_hashed_pw(schlumpfineid, users.hash_passwd("schlumpfine1"))
+
+        print("schlumpf ID:", schlumpfid)
+        print("schlumpfine ID:", schlumpfineid)
+
+        assert users.authenticate(schlumpfid, "schlumpf1")
+        assert users.authenticate(schlumpfineid, "schlumpfine1")
+
+        users.session.commit()
+
 
         # check __setitem__
 
