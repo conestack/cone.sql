@@ -52,6 +52,7 @@ class SQLGroup(SQLPrincipal):
                                        primaryjoin='SQLGroupAssignment.groups_guid == SQLGroup.guid')
 
 
+
 class SQLGroupAssignment(Base):
     __tablename__ = 'group_assignment'
     groups_guid = Column(GUID, ForeignKey('group.guid', deferrable=True), primary_key=True, nullable=False)
@@ -216,15 +217,45 @@ class User(object):
 
 
 class GroupBehavior(PrincipalBehavior, BaseGroup):
+    user_manager = default(None)
+    """reference to IUsers instance"""
+
+    @override
+    def __init__(self, record, user_manager):
+        self.record = record
+        self.user_manager = user_manager
 
     @default
     @property
     def member_ids(self):
-        return [u.id for u in self.users]
+        return [u.id for u in self.record.users]
 
     @default
     def add(self, id):
-        raise NotImplementedError
+        user = self.user_manager[id]
+        self.record.users.append(user.record)
+
+    @default
+    def __getitem__(self, key):
+        res = self.user_manager[key]
+        if self.record not in res.record.groups:
+            raise KeyError(key)
+
+    @default
+    def __delitem__(self, key):
+        raise NotImplementedError(
+            'Abstract ``Group`` does not implement ``__delitem__``')
+
+    @default
+    def __iter__(self):
+        raise NotImplementedError(
+            'Abstract ``Group`` does not implement ``__iter__``')
+
+    @default
+    @property
+    def users(self):
+        raise NotImplementedError(
+            'Abstract ``Group`` does not implement ``users``')
 
 
 @plumbing(
@@ -265,11 +296,14 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     def id_for_login(self, login):
         try:
             searchterm = '"%s"' % login  # JSON field works so that the searchterm has to be enclosed in doublequotes
-            # res = self.session.query(SQLUser).filter(cast(SQLUser.data["email"], String) == searchterm).one()
             if self.session.bind.dialect.name == 'sqlite':
-                res = self.session.query(SQLUser).filter(cast(SQLUser.data[cast("$." + SQLUser.login, String)], String) == searchterm).one()
+                res = self.session.query(SQLUser).filter(
+                    cast(SQLUser.data[cast("$." + SQLUser.login, String)], String) == searchterm
+                ).one()
             else:
-                res = self.session.query(SQLUser).filter(cast(SQLUser.data[SQLUser.login], String) == searchterm).one()
+                res = self.session.query(SQLUser).filter(
+                    cast(SQLUser.data[SQLUser.login], String) == searchterm
+                ).one()
             return res.id
         except NoResultFound:
             raise KeyError(login)
@@ -296,12 +330,16 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
         return map(lambda u: u.id, users)
 
     @default
+    def __setitem__(self, key, value):
+        raise NotImplementedError("users can only be added using the create() method")
+
+    @default
     def create(self, _id, **kw):
         login = kw.pop("login", None)
         sqluser = SQLUser(id=_id, login=login, data=kw)
         self.session.add(sqluser)
-        u = User(sqluser)
-        return u
+        return self[_id]
+
 
     @default
     def get_hashed_pw(self, id):
@@ -329,18 +367,47 @@ class Users(object):
 
 
 class GroupsBehavior(PrincipalsBehavior, BaseGroups):
+    user_manager = default(None)
+
+    @override
+    def __init__(self, users):
+        self.user_manager = users
 
     @default
     def search(self, **kw):
         raise NotImplementedError
 
     @default
-    def create(self, _id: str, **kw):
-        raise NotImplementedError
+    def create(self, _id, **kw):
+        sqlgroup = SQLGroup(id=_id, data=kw)
+        self.session.add(sqlgroup)
+        return self[_id]
+        # return Group(sqlgroup, self.user_manager)
 
     @default
-    def invalidate(self, key=None):
-        raise NotImplementedError
+    def __getitem__(self, id, default=None):
+        try:
+            sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
+        except NoResultFound as ex:
+            raise KeyError(id)
+        return Group(sqlgroup, self.user_manager)
+
+    @default
+    def __delitem__(self, id):
+        try:
+            sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
+            self.session.delete(sqlgroup)
+        except NoResultFound as ex:
+            raise KeyError(id)
+
+    @default
+    def __iter__(self):
+        groups = self.session.query(SQLGroup)
+        return map(lambda u: u.id, groups)
+
+    @default
+    def __setitem__(self, key, value):
+        raise NotImplementedError("groups can only be added using the create() method")
 
 
 @plumbing(
@@ -362,8 +429,8 @@ class UgmBehavior(BaseUgm):
 
     @override
     def __init__(self):
-        self.groups = Groups()
         self.users = Users()
+        self.groups = Groups(self.users)
 
     @default
     def __call__(self, *a):

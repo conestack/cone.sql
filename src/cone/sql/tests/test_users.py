@@ -80,11 +80,16 @@ class UsersTestCase(unittest.TestCase):
         members = session.query(SQLGroup).filter(SQLGroup.id == "members").one()
         phil_group = session.query(SQLGroup).filter(SQLGroup.id == "phil").one()
 
+        phil_group.frunz = 42
+
         assert phil_group.id == phil.id
         assert phil_group.guid != phil.guid
 
         assert phil in members.users
         assert donald in members.users
+
+        phil_group.users.append(phil)
+        assert phil_group in phil.groups
 
         session.commit()
 
@@ -141,9 +146,19 @@ class TestUserNodes(NodeTestCase):
 
         assert users.authenticate(schlumpfid, "schlumpf1")
         assert users.authenticate(schlumpfineid, "schlumpfine1")
-
         users.session.commit()
 
+        # And now the groups
+        managers = groups.create("managers", title="Masters of the Universe")
+        members = groups.create("members", title="the normal ones")
+        managers1 = groups["managers"]
 
-        # check __setitem__
+        assert managers1.record.data["title"] == "Masters of the Universe"
 
+        assert groups.user_manager is not None
+        users.session.commit()
+        managers.add("phil")
+        users.session.commit()
+        assert "phil" in managers.member_ids
+
+        phil2 = managers["phil"]
