@@ -156,9 +156,13 @@ class TestUserNodes(NodeTestCase):
         assert managers1.record.data["title"] == "Masters of the Universe"
 
         assert groups.user_manager is not None
-        users.session.commit()
         managers.add("phil")
+        for id in ids:
+            members.add(id)
         users.session.commit()
         assert "phil" in managers.member_ids
 
         phil2 = managers["phil"]
+
+        for id in ids:
+            assert id in members.member_ids

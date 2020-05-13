@@ -254,9 +254,10 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     @default
     @property
     def users(self):
-        raise NotImplementedError(
-            'Abstract ``Group`` does not implement ``users``')
-
+        return [
+            self.user_manager[id]
+            for id in self.member_ids
+        ]
 
 @plumbing(
     GroupBehavior,
