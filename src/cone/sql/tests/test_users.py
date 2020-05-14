@@ -122,7 +122,6 @@ class TestUserNodes(NodeTestCase):
         assert users["phil"].authenticate("test123")
         assert not users.authenticate("zworkb", "test123")
 
-
         # check user attributes
         assert users["phil"].record.data["height"] == 12
 
@@ -169,7 +168,7 @@ class TestUserNodes(NodeTestCase):
         phil2 = managers["phil"]
         assert isinstance(phil2, User)
 
-        # non group members should raise a KeyError
+        ## non group members should raise a KeyError
         self.assertRaises(KeyError, lambda: managers['donald'])
 
         for id in ids:
@@ -207,11 +206,13 @@ class TestUserNodes(NodeTestCase):
         ## delete a group membership
         del managers["phil"]
         # users.session.flush()
-        users.session.commit() # needs commit, flush() is not sufficient
-        assert users["phil"] not in managers.users # needs refresh
+        users.session.commit()  # needs commit, flush() is not sufficient
+        assert users["phil"] not in managers.users  # needs refresh
         assert users["phil"] not in groups["managers"].users
         assert "phil" not in managers.member_ids
         assert "managers" not in users["phil"].group_ids
         assert groups["managers"] not in users["phil"].groups
 
+        for uid in members:
+            print (uid)
         print("ready")
