@@ -112,7 +112,7 @@ class TestUserNodes(NodeTestCase):
         # create some users with attribute
         ids = ["phil", "donald", "dagobert", "mickey"]
         for count, id in enumerate(ids):
-            email = f"{id}@bluedynamics.net"
+            email = "%s@bluedynamics.net" % id
             users.create(id, height=count + 1, email=email, status="super%s" % (count + 1))
 
         # give phil a password
