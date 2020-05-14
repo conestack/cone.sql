@@ -325,6 +325,11 @@ class PrincipalsBehavior(Behavior):
     @override
     def search(self, criteria=None, attrlist=None,
                exact_match=False, or_search=False):
+        typemap={
+            str: String,
+            int: Integer
+
+        }
         if criteria is None:
             criteria = {}
         op = or_ if or_search else and_
@@ -341,14 +346,14 @@ class PrincipalsBehavior(Behavior):
             criteria.pop(key, None)
 
         def literal(value):
-            lit = ('"%s"' % value) if isinstance(value, str) else str(value)
+            lit = ('"%s"' % value) if isinstance(value, str) else value
             if exact_match:
                 return lit
             else:
-                return lit.replace("*", "%%")
+                return lit.replace("*", "%%") if isinstance(lit, str) else lit
 
         def field_selector(key, value):
-            return cast(cls.data[key], String)
+            return cls.data[key].cast(String).cast(typemap[type(value)])
 
         def field_comparator(key, value):
             if not exact_match and isinstance(value, str):
