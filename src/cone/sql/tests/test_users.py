@@ -107,9 +107,9 @@ class TestUserNodes(NodeTestCase):
 
         # create some users with attribute
         ids = ["phil", "donald", "dagobert", "mickey"]
-        for id in ids:
+        for count, id in enumerate(ids):
             email = f"{id}@bluedynamics.net"
-            users.create(id, height=12, email=email)
+            users.create(id, height=count+1, email=email, status="super%s" % (count+1))
 
         # give phil a password
         users.set_hashed_pw("phil", users.hash_passwd("test123"))
@@ -123,7 +123,10 @@ class TestUserNodes(NodeTestCase):
         assert not users.authenticate("zworkb", "test123")
 
         # check user attributes
-        assert users["phil"].record.data["height"] == 12
+        assert users["phil"].record.data["height"] == 1
+        assert users["donald"].record.data["height"] == 2
+        assert users["phil"].record.data["status"] == "super1"
+        assert users["donald"].record.data["status"] == "super2"
 
         # check __iter__
         ids1 = list(users)
@@ -228,5 +231,23 @@ class TestUserNodes(NodeTestCase):
 
         ugm.remove_role("Smurf", groups["managers"])
         assert "Smurf" not in groups["managers"].roles
+
+        # searching
+
+        # r1 = users.search(
+        #     criteria=dict(
+        #         height=1
+        #     )
+        # )
+        # assert len(r1) == 1
+        # assert r1[0].id == "phil"
+
+        r2 = users.search(
+            criteria=dict(
+                status="super1"
+            )
+        )
+        assert len(r2) == 1
+        assert r2[0].id == "phil"
 
         print("ready")

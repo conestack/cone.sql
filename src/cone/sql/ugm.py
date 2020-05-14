@@ -3,10 +3,11 @@ import hashlib
 import itertools
 import os
 import uuid
+from operator import or_
 
 from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
 from plumber import plumbing, Behavior, default, override
-from sqlalchemy import Column, String, ForeignKey, JSON, cast, and_
+from sqlalchemy import Column, String, ForeignKey, JSON, cast, and_, Integer, DateTime
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -312,11 +313,29 @@ class Group(object):
     pass
 
 
-class PrincipalsBehavior:
+class PrincipalsBehavior(Behavior):
 
-    @default
-    def search(self, **kw):
-        raise NotImplementedError
+    @override
+    def search(self, criteria=None, attrlist=None,
+               exact_match=False, or_search=False):
+        op = or_ if or_search else and_
+        cls = self.record_class
+
+        typemap = dict(
+            str=String,
+            int=Integer,
+            datetime=DateTime
+        )
+
+        comparators = [
+            cast(cls.data[key], String) == (('"%s"' % value) if isinstance(value, str) else value)
+            for (key, value) in criteria.items()
+        ]
+        clause = op(*comparators)
+        query = self.ugm.users.session.query(cls).filter(
+            clause
+        )
+        return query.all()
 
     @default
     def create(self, _id, **kw):
@@ -336,7 +355,7 @@ class PrincipalsBehavior:
 
 class UsersBehavior(PrincipalsBehavior, BaseUsers):
     ugm = default(None)
-
+    record_class = default(SQLUser)
     @override
     def __init__(self, ugm):
         self.ugm = ugm
@@ -399,6 +418,10 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
         user = self[id]
         user.record.hashed_pw = hpw
 
+    # @default
+    # def search(self, *a, **kw):
+    #     """had to implement this, because search got routed to """
+    #     return PrincipalsBehavior.search(self, *a, **kw)
 
 @plumbing(
     UsersBehavior,
@@ -416,6 +439,7 @@ class Users(object):
 
 class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     ugm = default(None)
+    record_class = default(SQLGroup)
 
     @override
     def __init__(self, ugm):
