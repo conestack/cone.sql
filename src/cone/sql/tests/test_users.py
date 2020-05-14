@@ -312,4 +312,59 @@ class TestUserNodes(NodeTestCase):
             ('phil', {'height': 1, 'login': None, 'status': 'super1'})])
 
         assert sorted(r8) == should_be
-        print("ready")
+
+        r9 = users.search(
+            attrlist=[]
+        )
+        pprint.pprint(r9)
+        should_be = [
+            ('donald',
+             {'email': 'donald@bluedynamics.net',
+              'height': 2,
+              'login': None,
+              'status': 'super2'}),
+            ('dagobert',
+             {'email': 'dagobert@bluedynamics.net',
+              'height': 3,
+              'login': None,
+              'status': 'super3'}),
+            ('mickey',
+             {'email': 'mickey@bluedynamics.net',
+              'height': 4,
+              'login': None,
+              'status': 'super4'}),
+            ('schlumpf', {'email': 'schlumpf@bluedynamics.net', 'login': 'email'}),
+            ('schlumpfine', {'login': 'nickname', 'nickname': 'schlumpfinchen'}),
+            ('phil',
+             {'email': 'phil@bluedynamics.net',
+              'height': 1,
+              'login': None,
+              'status': 'super1'})
+        ]
+
+        assert sorted(r9) == sorted(should_be)
+
+        # Exact searches with empty result shall throw up
+        self.assertRaises(ValueError, lambda: users.search(
+            exact_match=True,
+            criteria=dict(
+                id="unobtainable"
+            )
+        ))
+
+        r10 = users.search(
+            exact_match=False,
+            criteria=dict(
+                id="unobtainable"
+            )
+        )
+        assert list(r10) == []
+
+        ## shall work with groups too
+        gids = groups.search(
+            criteria=dict(
+                title="Masters*"
+            )
+        )
+        assert gids == ["managers"]
+

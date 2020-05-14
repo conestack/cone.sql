@@ -50,7 +50,6 @@ class SQLPrincipal(Base):
             return self.data.get(key, default)
 
 
-
 class SQLGroup(SQLPrincipal):
     __mapper_args__ = {'polymorphic_identity': 'sqlgroup'}
     guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
@@ -285,7 +284,7 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     @default
     def __delitem__(self, key):
         # this one does not work, throws
-        # "AssertionError: Dependency rule tried to blank-out primary key column 'group_assignment.groups_guid' on instance '<SQLGroupAssignment at 0x10f831310>'""
+        # AssertionError: Dependency rule tried to blank-out primary key column 'group_assignment.groups_guid' on instance '<SQLGroupAssignment at 0x10f831310>'
         # self.record.users.remove(self.ugm.users[key].record)
 
         user = self.ugm.users[key]
@@ -331,7 +330,7 @@ class PrincipalsBehavior(Behavior):
         fixed_fields = ["id", "login"]
         fixed_field_comparators = [
             getattr(cls, key) == criteria[key] if exact_match \
-                 else getattr(cls, key).like(("%s" % criteria[key]).replace("*", "%%"))
+                else getattr(cls, key).like(("%s" % criteria[key]).replace("*", "%%"))
 
             for key in fixed_fields
             if key in criteria
@@ -374,9 +373,25 @@ class PrincipalsBehavior(Behavior):
                     )
                     for p in query.all()
                 ]
-            return res
+            else:  # empty attrlist, so we take all attributes
+                res = [
+                    (
+                        p.id,
+                        {  # merge fixed attributes and dynamic attributes from ``data``
+                            **{k: p.get_attribute(k) for k in fixed_fields if k != 'id'},
+                            **p.data
+                        }
+                    )
+                    for p in query.all()
+                ]
+
+            res
         else:
-            return [p.id for p in query.all()]
+            res = [p.id for p in query.all()]
+
+        if exact_match and not res:
+            raise ValueError("no entries found")
+        return res
 
     @default
     def create(self, _id, **kw):
@@ -487,10 +502,6 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     @override
     def __init__(self, ugm):
         self.ugm = ugm
-
-    @default
-    def search(self, **kw):
-        raise NotImplementedError
 
     @default
     def create(self, _id, **kw):
