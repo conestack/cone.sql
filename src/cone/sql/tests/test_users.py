@@ -99,6 +99,8 @@ class TestUserNodes(NodeTestCase):
 
     def test_node_users(self):
         self.layer.new_request()
+
+        # setup ugm
         ugm = Ugm()
         users = ugm.users
         groups = ugm.groups
@@ -154,8 +156,8 @@ class TestUserNodes(NodeTestCase):
         managers1 = groups["managers"]
 
         assert managers1.record.data["title"] == "Masters of the Universe"
-
         assert groups.user_manager is not None
+
         managers.add("phil")
         for id in ids:
             members.add(id)
@@ -163,6 +165,27 @@ class TestUserNodes(NodeTestCase):
         assert "phil" in managers.member_ids
 
         phil2 = managers["phil"]
+        assert isinstance(phil2, User)
+
+        # non group members should raise a KeyError
+        self.assertRaises(KeyError, lambda: managers['donald'])
 
         for id in ids:
             assert id in members.member_ids
+
+        # Role management
+        ## roles for a user
+        users['phil'].add_role("Editor")
+        assert "Editor" in users["phil"].roles
+
+        ## roles for group
+        groups["managers"].add_role("Manager")
+        groups["members"].add_role("Member")
+        assert "Manager" in groups["managers"].roles
+
+        ## cumulative roles for the user -> user has all roles by his groups
+        assert "Manager" in users["phil"].roles
+        assert users["phil"].roles == set(("Manager", "Editor", "Member"))
+
+        ## get groups of a user
+        print("ready")

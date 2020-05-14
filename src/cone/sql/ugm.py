@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import itertools
 import os
 import uuid
 
@@ -52,7 +53,6 @@ class SQLGroup(SQLPrincipal):
                                        primaryjoin='SQLGroupAssignment.groups_guid == SQLGroup.guid')
 
 
-
 class SQLGroupAssignment(Base):
     __tablename__ = 'group_assignment'
     groups_guid = Column(GUID, ForeignKey('group.guid', deferrable=True), primary_key=True, nullable=False)
@@ -101,22 +101,27 @@ class PrincipalBehavior(Behavior):
 
     @default
     def add_role(self, role):
-        if role not in self.roles:
-            self.roles = self.roles + [role]
+        if role not in self.own_roles:
+            self.own_roles = self.own_roles + [role]
 
     @default
     def remove_role(self, role):
-        if role in self.roles:
-            self.roles = [r for r in self.roles if r != role]  # to trigger the json field
+        if role in self.own_roles:
+            self.own_roles = [r for r in self.own_roles if r != role]  # to trigger the json field
 
     @property
-    def roles(self):
+    def own_roles(self):
         return self.record.principal_roles
 
     @default
-    @roles.setter
-    def roles(self, roles):
+    @own_roles.setter
+    def own_roles(self, roles):
         self.record.principal_roles = roles
+
+    @default
+    @property
+    def roles(self):
+        return self.own_roles
 
     @default
     def attributes_factory(self, name, parent):
@@ -129,7 +134,6 @@ class PrincipalBehavior(Behavior):
 
 
 class UserBehavior(PrincipalBehavior, BaseUser):
-
     @property
     def group_ids(self):
         return [g.id for g in self.groups]
@@ -137,6 +141,23 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     @property
     def groups(self):
         return [Group(g) for g in self.record.groups]
+
+    @default
+    @property
+    def roles(self):
+        """
+        accumulate principal's roles + assigned groups' roles
+        """
+        my_roles = self.own_roles
+
+        all_roles = itertools.chain(
+            my_roles,
+            *[
+                g.principal_roles for g in self.record.groups
+            ]
+        )
+
+        return set(all_roles)
 
 
 ENCODING = 'utf-8'
@@ -238,8 +259,11 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     @default
     def __getitem__(self, key):
         res = self.user_manager[key]
+
         if self.record not in res.record.groups:
             raise KeyError(key)
+
+        return res
 
     @default
     def __delitem__(self, key):
@@ -258,6 +282,7 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
             self.user_manager[id]
             for id in self.member_ids
         ]
+
 
 @plumbing(
     GroupBehavior,
@@ -341,7 +366,6 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
         self.session.add(sqluser)
         return self[_id]
 
-
     @default
     def get_hashed_pw(self, id):
         user = self[id]
@@ -383,7 +407,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
         sqlgroup = SQLGroup(id=_id, data=kw)
         self.session.add(sqlgroup)
         return self[_id]
-        # return Group(sqlgroup, self.user_manager)
+        # return Group(sqlgroup, self.user_manager)  # when doing it so, I get weird join errors
 
     @default
     def __getitem__(self, id, default=None):
