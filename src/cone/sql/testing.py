@@ -59,7 +59,7 @@ class SQLLayer(Security):
 
         # alternatively use postgresql - ditches db before start
         os.system("dropdb ugm; createdb ugm")
-        engine = create_engine("postgres:///ugm", echo=False)
+        engine = create_engine("postgresql:///ugm", echo=False)
 
         # sqlite persistent in package folder for post mortem analysis
         # curdir = os.path.dirname(__file__)

@@ -487,15 +487,15 @@ class UgmBehavior(BaseUgm):
 
     @default
     def add_role(self, role, principal):
-        raise NotImplementedError
+        principal.add_role(role)
 
     @default
     def remove_role(self, role, principal):
-        raise NotImplementedError
+        principal.remove_role(role)
 
     @default
     def roles(self, principal):
-        raise NotImplementedError
+        return principal.roles
 
 
 @plumbing(

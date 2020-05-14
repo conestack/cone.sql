@@ -213,6 +213,20 @@ class TestUserNodes(NodeTestCase):
         assert "managers" not in users["phil"].group_ids
         assert groups["managers"] not in users["phil"].groups
 
-        for uid in members:
-            print (uid)
+        ## test iter
+        assert set(ids) == set(list(members))
+
+        # ugm-level role management
+        ugm.add_role("Snuff", users["phil"])
+        assert "Snuff" in users["phil"].roles
+
+        ugm.add_role("Smurf", groups["managers"])
+        assert "Smurf" in groups["managers"].roles
+
+        ugm.remove_role("Snuff", users["phil"])
+        assert "Snuff" not in users["phil"].roles
+
+        ugm.remove_role("Smurf", groups["managers"])
+        assert "Smurf" not in groups["managers"].roles
+
         print("ready")
