@@ -55,11 +55,11 @@ class SQLLayer(Security):
         return request
 
     def init_sql(self):
-        engine = create_engine('sqlite:///:memory:', echo=True)
+        # engine = create_engine('sqlite:///:memory:', echo=True)
 
         # alternatively use postgresql - ditches db before start
-        # os.system("dropdb ugm; createdb ugm")
-        # engine = create_engine("postgresql:///ugm", echo=False)
+        os.system("dropdb ugm; createdb ugm")
+        engine = create_engine("postgresql:///ugm", echo=False)
 
         # sqlite persistent in package folder for post mortem analysis
         # curdir = os.path.dirname(__file__)

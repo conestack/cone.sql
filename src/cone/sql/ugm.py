@@ -321,7 +321,16 @@ class PrincipalsBehavior(Behavior):
                exact_match=False, or_search=False):
         op = or_ if or_search else and_
         cls = self.record_class
-        comparators = []
+        fixed_fields = ["id", "login"]
+        fixed_field_comparators = [
+            getattr(cls, key) == criteria[key] if exact_match \
+                 else getattr(cls, key).like(("%s" % criteria[key]).replace("*", "%%"))
+
+            for key in fixed_fields
+            if key in criteria
+        ]
+        for key in fixed_fields:
+            criteria.pop(key, None)
 
         def literal(value):
             lit = ('"%s"' % value) if isinstance(value, str) else str(value)
@@ -339,17 +348,13 @@ class PrincipalsBehavior(Behavior):
             else:
                 return field_selector(key, value) == literal(value)
 
-        id = criteria.pop("id", None)
-        if id:
-            comparators = [
-                cls.id == id if exact_match\
-                    else cls.id.like(("%s" % id).replace("*", "%%"))
-            ]
 
-        comparators.extend([
+        dynamic_comparators = [
             field_comparator(key, value)
             for (key, value) in criteria.items()
-        ])
+        ]
+
+        comparators = fixed_field_comparators + dynamic_comparators
         clause = op(*comparators)
         query = self.ugm.users.session.query(cls).filter(clause)
         return [p.id for p in query.all()]
@@ -373,6 +378,7 @@ class PrincipalsBehavior(Behavior):
 class UsersBehavior(PrincipalsBehavior, BaseUsers):
     ugm = default(None)
     record_class = default(SQLUser)
+
     @override
     def __init__(self, ugm):
         self.ugm = ugm
@@ -439,6 +445,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     # def search(self, *a, **kw):
     #     """had to implement this, because search got routed to """
     #     return PrincipalsBehavior.search(self, *a, **kw)
+
 
 @plumbing(
     UsersBehavior,

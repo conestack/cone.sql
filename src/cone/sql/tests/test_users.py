@@ -285,4 +285,8 @@ class TestUserNodes(NodeTestCase):
         r6 = users.search()
         assert len(r6) == 6  # simply all of them
 
+        r7 = users.search(criteria=dict(
+            login="nickname"
+        ))
+        assert set(r7) == {"schlumpfine"}
         print("ready")
