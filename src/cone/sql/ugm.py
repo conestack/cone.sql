@@ -323,8 +323,10 @@ class Group(object):
 class PrincipalsBehavior(Behavior):
 
     @override
-    def search(self, criteria={}, attrlist=None,
+    def search(self, criteria=None, attrlist=None,
                exact_match=False, or_search=False):
+        if criteria is None:
+            criteria = {}
         op = or_ if or_search else and_
         cls = self.record_class
         fixed_fields = ["id", "login"]
@@ -427,7 +429,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
                 ).one()
             else:
                 res = self.session.query(SQLUser).filter(
-                    cast(SQLUser.data[SQLUser.login], String) == searchterm
+                    SQLUser.data[SQLUser.login].cast(String) == searchterm
                 ).one()
             return res.id
         except NoResultFound:
