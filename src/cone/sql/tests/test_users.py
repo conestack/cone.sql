@@ -1,4 +1,5 @@
 import os
+import pprint
 import unittest
 
 from node.tests import NodeTestCase
@@ -32,6 +33,9 @@ def temp_database(fn):
 
 
 class UsersTestCase(unittest.TestCase):
+    """
+    test SQLAlchemu classes only
+    """
 
     @temp_database
     def test_db(self, session):
@@ -252,6 +256,7 @@ class TestUserNodes(NodeTestCase):
         assert len(r2) == 1
         assert r2[0] == "phil"
 
+        ## search with or
         r3 = users.search(
             criteria=dict(
                 status="super1",
@@ -262,6 +267,7 @@ class TestUserNodes(NodeTestCase):
         assert len(r3) == 2
         assert set(r3) == set(("phil", "donald",))
 
+        ## search with wildcards in dynamic fields
         r4 = users.search(
             criteria=dict(
                 status="super*",
@@ -282,11 +288,28 @@ class TestUserNodes(NodeTestCase):
         assert len(r5) == 2
         assert set(r5) == set(("donald", "dagobert"))
 
+        ## blank search should return all entries
         r6 = users.search()
         assert len(r6) == 6  # simply all of them
 
+        ## search for login field
         r7 = users.search(criteria=dict(
             login="nickname"
         ))
         assert set(r7) == {"schlumpfine"}
+
+        ## search with attrlist
+        r8 = users.search(
+            attrlist=["login", "height", "status"]
+        )
+        pprint.pprint(r8)
+        should_be = sorted([
+            ('donald', {'height': 2, 'login': None, 'status': 'super2'}),
+            ('dagobert', {'height': 3, 'login': None, 'status': 'super3'}),
+            ('mickey', {'height': 4, 'login': None, 'status': 'super4'}),
+            ('schlumpf', {'height': None, 'login': 'email', 'status': None}),
+            ('schlumpfine', {'height': None, 'login': 'nickname', 'status': None}),
+            ('phil', {'height': 1, 'login': None, 'status': 'super1'})])
+
+        assert sorted(r8) == should_be
         print("ready")

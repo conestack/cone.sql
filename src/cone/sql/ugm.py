@@ -43,6 +43,13 @@ class SQLPrincipal(Base):
     data = Column(JSON, )
     principal_roles = Column(JSON, default=[])
 
+    def get_attribute(self, key, default=None):
+        try:
+            return getattr(self, key)
+        except AttributeError:
+            return self.data.get(key, default)
+
+
 
 class SQLGroup(SQLPrincipal):
     __mapper_args__ = {'polymorphic_identity': 'sqlgroup'}
@@ -348,7 +355,6 @@ class PrincipalsBehavior(Behavior):
             else:
                 return field_selector(key, value) == literal(value)
 
-
         dynamic_comparators = [
             field_comparator(key, value)
             for (key, value) in criteria.items()
@@ -357,7 +363,20 @@ class PrincipalsBehavior(Behavior):
         comparators = fixed_field_comparators + dynamic_comparators
         clause = op(*comparators)
         query = self.ugm.users.session.query(cls).filter(clause)
-        return [p.id for p in query.all()]
+
+        # XXX: should we be lazy here and yield?, would be nice for looong lists
+        if attrlist is not None:
+            if attrlist:
+                res = [
+                    (
+                        p.id,
+                        {k: p.get_attribute(k) for k in attrlist}
+                    )
+                    for p in query.all()
+                ]
+            return res
+        else:
+            return [p.id for p in query.all()]
 
     @default
     def create(self, _id, **kw):
