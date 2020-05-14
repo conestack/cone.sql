@@ -110,6 +110,7 @@ def initialize_cone_sql(config, global_config, settings):
     prefix = 'cone.sql.dbinit.'
     if settings.get('{}url'.format(prefix), None) is None:  # pragma: no cover
         return
+    # XXX: use pyramid.includes in ini file instead of hardcoded loading here
     config.include('pyramid_retry')
     config.include('pyramid_tm')
     engine = engine_from_config(settings, prefix)

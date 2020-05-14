@@ -172,6 +172,7 @@ class SQLTableStorage(Behavior):
 
     @finalize
     def __call__(self):
+        # XXX: check for transaction manager
         session = self.session
         session.commit()
 
