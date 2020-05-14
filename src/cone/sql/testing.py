@@ -55,11 +55,11 @@ class SQLLayer(Security):
         return request
 
     def init_sql(self):
-        # engine = create_engine('sqlite:///:memory:', echo=True)
+        engine = create_engine('sqlite:///:memory:', echo=True)
 
         # alternatively use postgresql
-        os.system("dropdb ugm; createdb ugm")
-        engine = create_engine("postgres:///ugm", echo=False)
+        # os.system("dropdb ugm; createdb ugm")
+        # engine = create_engine("postgres:///ugm", echo=False)
         #
         # curdir = os.path.dirname(__file__)
         # fname = "%s/test.db" % curdir

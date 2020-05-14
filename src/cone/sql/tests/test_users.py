@@ -119,7 +119,9 @@ class TestUserNodes(NodeTestCase):
         assert not "zworkb" in users
 
         assert users.authenticate("phil", "test123")
+        assert users["phil"].authenticate("test123")
         assert not users.authenticate("zworkb", "test123")
+
 
         # check user attributes
         assert users["phil"].record.data["height"] == 12
@@ -156,7 +158,7 @@ class TestUserNodes(NodeTestCase):
         managers1 = groups["managers"]
 
         assert managers1.record.data["title"] == "Masters of the Universe"
-        assert groups.user_manager is not None
+        assert groups.ugm is not None
 
         managers.add("phil")
         for id in ids:
@@ -175,8 +177,16 @@ class TestUserNodes(NodeTestCase):
 
         # Role management
         ## roles for a user
-        users['phil'].add_role("Editor")
+        users["phil"].add_role("Editor")
+        users["phil"].add_role("Spam")
         assert "Editor" in users["phil"].roles
+        assert "Spam" in users["phil"].roles
+
+        users["phil"].remove_role("Spam")
+        assert "Spam" not in users["phil"].roles
+        users.session.commit()
+        ## removing non-existing roles is tolerated
+        users["phil"].remove_role("Spam")
 
         ## roles for group
         groups["managers"].add_role("Manager")
@@ -187,5 +197,21 @@ class TestUserNodes(NodeTestCase):
         assert "Manager" in users["phil"].roles
         assert users["phil"].roles == set(("Manager", "Editor", "Member"))
 
-        ## get groups of a user
+        ## get group instances of a user
+        for g in users["phil"].groups:
+            assert isinstance(g, Group)
+
+        ## group_ids shall match group instances
+        assert set(users["phil"].group_ids) == set([g.id for g in users["phil"].groups])
+
+        ## delete a group membership
+        del managers["phil"]
+        # users.session.flush()
+        users.session.commit() # needs commit, flush() is not sufficient
+        assert users["phil"] not in managers.users # needs refresh
+        assert users["phil"] not in groups["managers"].users
+        assert "phil" not in managers.member_ids
+        assert "managers" not in users["phil"].group_ids
+        assert groups["managers"] not in users["phil"].groups
+
         print("ready")

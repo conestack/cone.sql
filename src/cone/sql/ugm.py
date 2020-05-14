@@ -6,7 +6,7 @@ import uuid
 
 from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
 from plumber import plumbing, Behavior, default, override
-from sqlalchemy import Column, String, ForeignKey, JSON, cast
+from sqlalchemy import Column, String, ForeignKey, JSON, cast, and_
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -77,6 +77,11 @@ class SQLUser(SQLPrincipal):
 ####################################################
 
 def has_autocommit():
+    """
+    retrieve the autocommit flag from env
+    only "True", "False" are allowed
+    :return: bool
+    """
     ac = os.environ.get("UGM_SQL_AUTOCOMMIT", "False").lower()
     if ac not in ["true", "false"]:
         raise ValueError(f"autocommit must be true/false, got {ac}")
@@ -89,15 +94,19 @@ def has_autocommit():
 
 class PrincipalBehavior(Behavior):
     record = default(None)
+    """reference to sqlalchemy record instance"""
+    ugm = default(None)
+    """reference to IUgm instance"""
+
+    @override
+    def __init__(self, record, ugm):
+        self.record = record
+        self.ugm = ugm
 
     @default
     @property
     def id(self):
         return self.record.id
-
-    @override
-    def __init__(self, record):
-        self.record = record
 
     @default
     def add_role(self, role):
@@ -134,13 +143,15 @@ class PrincipalBehavior(Behavior):
 
 
 class UserBehavior(PrincipalBehavior, BaseUser):
+    @default
     @property
     def group_ids(self):
         return [g.id for g in self.groups]
 
+    @default
     @property
     def groups(self):
-        return [Group(g) for g in self.record.groups]
+        return [self.ugm.groups[g.id] for g in self.record.groups]
 
     @default
     @property
@@ -158,6 +169,11 @@ class UserBehavior(PrincipalBehavior, BaseUser):
         )
 
         return set(all_roles)
+
+    @default
+    def authenticate(self, pw):
+        return self.ugm.users.authenticate(self.id, pw)
+
 
 
 ENCODING = 'utf-8'
@@ -238,13 +254,6 @@ class User(object):
 
 
 class GroupBehavior(PrincipalBehavior, BaseGroup):
-    user_manager = default(None)
-    """reference to IUsers instance"""
-
-    @override
-    def __init__(self, record, user_manager):
-        self.record = record
-        self.user_manager = user_manager
 
     @default
     @property
@@ -253,12 +262,12 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
 
     @default
     def add(self, id):
-        user = self.user_manager[id]
+        user = self.ugm.users[id]
         self.record.users.append(user.record)
 
     @default
     def __getitem__(self, key):
-        res = self.user_manager[key]
+        res = self.ugm.users[key]
 
         if self.record not in res.record.groups:
             raise KeyError(key)
@@ -267,8 +276,20 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
 
     @default
     def __delitem__(self, key):
-        raise NotImplementedError(
-            'Abstract ``Group`` does not implement ``__delitem__``')
+
+        #this one does not work, throws
+        # "AssertionError: Dependency rule tried to blank-out primary key column 'group_assignment.groups_guid' on instance '<SQLGroupAssignment at 0x10f831310>'""
+        # self.record.users.remove(self.ugm.users[key].record)
+
+        user = self.ugm.users[key]
+        assoc = self.ugm.users.session.query(SQLGroupAssignment) \
+            .filter(
+                and_(
+                    SQLGroupAssignment.groups_guid == self.record.guid,
+                    SQLGroupAssignment.users_guid == user.record.guid
+                )
+            ).one()
+        self.ugm.users.session.delete(assoc)
 
     @default
     def __iter__(self):
@@ -279,7 +300,7 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     @property
     def users(self):
         return [
-            self.user_manager[id]
+            self.ugm.users[id]
             for id in self.member_ids
         ]
 
@@ -318,6 +339,12 @@ class PrincipalsBehavior:
 
 
 class UsersBehavior(PrincipalsBehavior, BaseUsers):
+    ugm = default(None)
+
+    @override
+    def __init__(self, ugm):
+        self.ugm = ugm
+
     @default
     def id_for_login(self, login):
         try:
@@ -340,7 +367,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
             sqluser = self.session.query(SQLUser).filter(SQLUser.id == id).one()
         except NoResultFound as ex:
             raise KeyError(id)
-        return User(sqluser)
+        return User(sqluser, self.ugm)
 
     @default
     def __delitem__(self, id):
@@ -392,11 +419,11 @@ class Users(object):
 
 
 class GroupsBehavior(PrincipalsBehavior, BaseGroups):
-    user_manager = default(None)
+    ugm = default(None)
 
     @override
-    def __init__(self, users):
-        self.user_manager = users
+    def __init__(self, ugm):
+        self.ugm = ugm
 
     @default
     def search(self, **kw):
@@ -407,7 +434,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
         sqlgroup = SQLGroup(id=_id, data=kw)
         self.session.add(sqlgroup)
         return self[_id]
-        # return Group(sqlgroup, self.user_manager)  # when doing it so, I get weird join errors
+        # return Group(sqlgroup, self.ugm)  # when doing it so, I get weird join errors
 
     @default
     def __getitem__(self, id, default=None):
@@ -415,7 +442,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
             sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
         except NoResultFound as ex:
             raise KeyError(id)
-        return Group(sqlgroup, self.user_manager)
+        return Group(sqlgroup, self.ugm)
 
     @default
     def __delitem__(self, id):
@@ -454,8 +481,8 @@ class UgmBehavior(BaseUgm):
 
     @override
     def __init__(self):
-        self.users = Users()
-        self.groups = Groups(self.users)
+        self.users = Users(self)
+        self.groups = Groups(self)
 
     @default
     def __call__(self, *a):
