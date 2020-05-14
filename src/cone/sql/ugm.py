@@ -3,6 +3,7 @@ import hashlib
 import itertools
 import os
 import uuid
+from datetime import datetime
 from operator import or_
 
 from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
@@ -316,26 +317,42 @@ class Group(object):
 class PrincipalsBehavior(Behavior):
 
     @override
-    def search(self, criteria=None, attrlist=None,
+    def search(self, criteria={}, attrlist=None,
                exact_match=False, or_search=False):
         op = or_ if or_search else and_
         cls = self.record_class
+        comparators = []
 
-        typemap = dict(
-            str=String,
-            int=Integer,
-            datetime=DateTime
-        )
+        def literal(value):
+            lit = ('"%s"' % value) if isinstance(value, str) else str(value)
+            if exact_match:
+                return lit
+            else:
+                return lit.replace("*", "%%")
 
-        comparators = [
-            cast(cls.data[key], String) == (('"%s"' % value) if isinstance(value, str) else value)
+        def field_selector(key, value):
+            return cast(cls.data[key], String)
+
+        def field_comparator(key, value):
+            if not exact_match and isinstance(value, str):
+                return field_selector(key, value).like(literal(value))
+            else:
+                return field_selector(key, value) == literal(value)
+
+        id = criteria.pop("id", None)
+        if id:
+            comparators = [
+                cls.id == id if exact_match\
+                    else cls.id.like(("%s" % id).replace("*", "%%"))
+            ]
+
+        comparators.extend([
+            field_comparator(key, value)
             for (key, value) in criteria.items()
-        ]
+        ])
         clause = op(*comparators)
-        query = self.ugm.users.session.query(cls).filter(
-            clause
-        )
-        return query.all()
+        query = self.ugm.users.session.query(cls).filter(clause)
+        return [p.id for p in query.all()]
 
     @default
     def create(self, _id, **kw):

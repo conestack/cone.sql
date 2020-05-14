@@ -109,7 +109,7 @@ class TestUserNodes(NodeTestCase):
         ids = ["phil", "donald", "dagobert", "mickey"]
         for count, id in enumerate(ids):
             email = f"{id}@bluedynamics.net"
-            users.create(id, height=count+1, email=email, status="super%s" % (count+1))
+            users.create(id, height=count + 1, email=email, status="super%s" % (count + 1))
 
         # give phil a password
         users.set_hashed_pw("phil", users.hash_passwd("test123"))
@@ -234,20 +234,55 @@ class TestUserNodes(NodeTestCase):
 
         # searching
 
-        # r1 = users.search(
-        #     criteria=dict(
-        #         height=1
-        #     )
-        # )
-        # assert len(r1) == 1
-        # assert r1[0].id == "phil"
+        ## search by int
+        r1 = users.search(
+            criteria=dict(
+                height=1
+            )
+        )
+        assert len(r1) == 1
+        assert r1[0] == "phil"
 
+        ## search by string
         r2 = users.search(
             criteria=dict(
                 status="super1"
             )
         )
         assert len(r2) == 1
-        assert r2[0].id == "phil"
+        assert r2[0] == "phil"
+
+        r3 = users.search(
+            criteria=dict(
+                status="super1",
+                height=2
+            ),
+            or_search=True
+        )
+        assert len(r3) == 2
+        assert set(r3) == set(("phil", "donald",))
+
+        r4 = users.search(
+            criteria=dict(
+                status="super*",
+            ),
+            exact_match=False
+        )
+        print(r4)
+        assert len(r4) == 4
+        assert set(r4) == set(("phil", "donald", "dagobert", "mickey"))
+
+        r5 = users.search(
+            criteria=dict(
+                id="d*",
+            ),
+            exact_match=False
+        )
+        print(r5)
+        assert len(r5) == 2
+        assert set(r5) == set(("donald", "dagobert"))
+
+        r6 = users.search()
+        assert len(r6) == 6  # simply all of them
 
         print("ready")
