@@ -429,8 +429,9 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
         try:
             searchterm = '"%s"' % login  # JSON field works so that the searchterm has to be enclosed in doublequotes
             if self.session.bind.dialect.name == 'sqlite':
+                # if the key to the json field is variable we need a special treatment for sqlite
                 res = self.session.query(SQLUser).filter(
-                    cast(SQLUser.data[cast("$." + SQLUser.login, String)], String) == searchterm
+                    SQLUser.data[("$." + SQLUser.login).cast(String)].cast(String) == searchterm
                 ).one()
             else:
                 res = self.session.query(SQLUser).filter(
