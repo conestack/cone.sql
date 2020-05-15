@@ -562,9 +562,11 @@ class UgmBehavior(BaseUgm):
     groups: Groups = default(None)
 
     @override
-    def __init__(self):
+    def __init__(self, engine=None):
         self.users = Users(self)
         self.groups = Groups(self)
+        if engine:
+            Base.metadata.create_all(engine)
 
     @default
     def __call__(self, *a):
@@ -589,4 +591,3 @@ class UgmBehavior(BaseUgm):
     Nodify)
 class Ugm(object):
     pass
-
