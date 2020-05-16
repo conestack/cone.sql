@@ -55,7 +55,7 @@ class SQLLayer(Security):
         return request
 
     def init_sql(self):
-        engine = create_engine('sqlite:///:memory:', echo=True)
+        engine = create_engine('sqlite:///:memory:', echo=False)
 
         # alternatively use postgresql - ditches db before start
         # os.system("dropdb ugm; createdb ugm")

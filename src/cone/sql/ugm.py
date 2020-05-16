@@ -5,6 +5,7 @@ import os
 import uuid
 from datetime import datetime
 from operator import or_
+from weakref import finalize
 
 from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
 from plumber import plumbing, Behavior, default, override
@@ -107,9 +108,19 @@ class PrincipalBehavior(Behavior):
     """reference to IUgm instance"""
 
     @override
-    def __init__(self, record, ugm):
+    def __init__(self, name, parent, record):
+        self.__parent__ = parent
         self.record = record
-        self.ugm = ugm
+
+    @default
+    @property
+    def __name__(self):
+        return self.id
+
+    @override
+    @property
+    def ugm(self):
+        return self.parent.parent
 
     @default
     @property
@@ -258,6 +269,7 @@ class AuthenticationBehavior(Behavior):
     Nodespaces,
     Attributes,
     Nodify,
+    Adopt,
     SQLSession
 )
 class User(object):
@@ -325,6 +337,11 @@ class Group(object):
 
 
 class PrincipalsBehavior(Behavior):
+
+    @finalize
+    @property
+    def ugm(self):
+        return self.parent
 
     @override
     def search(self, criteria=None, attrlist=None,
@@ -424,10 +441,6 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     ugm = default(None)
     record_class = default(SQLUser)
 
-    @override
-    def __init__(self, ugm):
-        self.ugm = ugm
-
     @default
     def id_for_login(self, login):
         try:
@@ -451,7 +464,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
             sqluser = self.session.query(SQLUser).filter(SQLUser.id == id).one()
         except NoResultFound as ex:
             raise KeyError(id)
-        return User(sqluser, self.ugm)
+        return User(id, self, sqluser)
 
     @default
     def __delitem__(self, id):
@@ -506,7 +519,8 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     Adopt,
     Attributes,
     Nodify,
-    SQLSession
+    SQLSession,
+    DefaultInit
 )
 class Users(object):
     @default
@@ -520,9 +534,6 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     ugm = default(None)
     record_class = default(SQLGroup)
 
-    @override
-    def __init__(self, ugm):
-        self.ugm = ugm
 
     @default
     def create(self, _id, **kw):
@@ -537,7 +548,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
             sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
         except NoResultFound as ex:
             raise KeyError(id)
-        return Group(sqlgroup, self.ugm)
+        return Group(id, self, sqlgroup)
 
     @default
     def __delitem__(self, id):
@@ -564,7 +575,8 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     Adopt,
     Attributes,
     Nodify,
-    SQLSession
+    SQLSession,
+    DefaultInit
 )
 class Groups(object):
     pass
@@ -573,13 +585,15 @@ class Groups(object):
 class UgmBehavior(BaseUgm):
     users: Users = default(None)
     groups: Groups = default(None)
+    name = "Ugm"
 
     @override
-    def __init__(self, engine=None):
-        self.users = Users(self)
-        self.groups = Groups(self)
+    def __init__(self, name, parent, engine=None):
+        self.users = Users("users", self)
+        self.groups = Groups("groups", self)
         if engine:
             Base.metadata.create_all(engine)
+
 
     @default
     def __call__(self, *a):

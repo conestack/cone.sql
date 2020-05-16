@@ -105,9 +105,12 @@ class TestUserNodes(NodeTestCase):
         self.layer.new_request()
 
         # setup ugm
-        ugm = Ugm()
+        ugm = Ugm("Ugm", None)
         users = ugm.users
         groups = ugm.groups
+
+        assert users.ugm is ugm
+        assert groups.ugm is ugm
 
         # create some users with attribute
         ids = ["phil", "donald", "dagobert", "mickey"]
@@ -119,6 +122,7 @@ class TestUserNodes(NodeTestCase):
         users.set_hashed_pw("phil", users.hash_passwd("test123"))
         print("hashed pwd:", users["phil"].record.hashed_pw)
 
+        dd = users["donald"]
         users["donald"].passwd(None, "test123")
         users.passwd("dagobert", None, "test124")
 
