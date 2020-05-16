@@ -158,6 +158,8 @@ class TestUserNodes(NodeTestCase):
         assert schlumpfid == "schlumpf"
         assert schlumpfineid == "schlumpfine"
 
+        assert users.id_for_login("phil") == "phil"
+
         users.set_hashed_pw(schlumpfid, users.hash_passwd("schlumpf1"))
         users.set_hashed_pw(schlumpfineid, users.hash_passwd("schlumpfine1"))
 
@@ -167,6 +169,7 @@ class TestUserNodes(NodeTestCase):
         assert users.authenticate(schlumpfid, "schlumpf1")
         assert users.authenticate(schlumpfineid, "schlumpfine1")
         users.session.commit()
+        # assert users.id_for_login("schlumpfinchen") == "schlumpfine"
 
         # And now the groups
         managers = groups.create("managers", title="Masters of the Universe")
@@ -321,7 +324,7 @@ class TestUserNodes(NodeTestCase):
             ('schlumpfine', {'height': None, 'login': 'nickname', 'status': None}),
             ('phil', {'height': 1, 'login': None, 'status': 'super1'})])
 
-        assert sorted(r8) == should_be
+        assert sorted(r8) == sorted(should_be)
 
         r9 = users.search(
             attrlist=[]
@@ -352,7 +355,7 @@ class TestUserNodes(NodeTestCase):
               'status': 'super1'})
         ]
 
-        assert sorted(r9) == sorted(should_be)
+        assert sorted(r9, ) == sorted(should_be)
 
         # Exact searches with empty result shall throw up
         self.assertRaises(ValueError, lambda: users.search(

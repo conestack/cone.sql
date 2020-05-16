@@ -9,7 +9,7 @@ from weakref import finalize
 
 from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
 from plumber import plumbing, Behavior, default, override
-from sqlalchemy import Column, String, ForeignKey, JSON, cast, and_, Integer, DateTime
+from sqlalchemy import Column, String, ForeignKey, JSON, cast, and_, Integer, DateTime, inspect
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -100,6 +100,37 @@ def has_autocommit():
     else:
         return False
 
+class PrincipalAttributeFactory(SQLRowNodeAttributes):
+
+    @property
+    def ugm(self):
+        return self.parent.ugm
+
+    def __setitem__(self, name, value):
+        if name in self:
+            setattr(self.record, name, value)
+        else:
+            self.record.data[name] = value
+
+    def __getitem__(self, name):
+        return self.record.get_attribute(name)
+        if name in self:
+            return getattr(self.record, name)
+        raise KeyError('Unknown attribute: {}'.format(name))
+
+class UserAttributeFactory(PrincipalAttributeFactory):
+    """"""
+    @property
+    def _columns(self):
+        return inspect(self.record.__class__).attrs.keys() + self.ugm.user_attr_names
+
+
+class GroupAttributeFactory(PrincipalAttributeFactory):
+    """"""
+    @property
+    def _columns(self):
+        return inspect(self.record.__class__).attrs.keys() + self.ugm.user_attr_names
+
 
 class PrincipalBehavior(Behavior):
     record = default(None)
@@ -151,7 +182,7 @@ class PrincipalBehavior(Behavior):
 
     @default
     def attributes_factory(self, name, parent):
-        return SQLRowNodeAttributes(name, parent, self.record)
+        return PrincipalAttributeFactory(name, parent, self.record)
 
     @default
     def __call__(self):
@@ -453,7 +484,8 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
                 ).one()
             return res.id
         except NoResultFound:
-            raise KeyError(login)
+            # if we dont find a login field, fall back to the login
+            return login
 
     @default
     def __getitem__(self, id, default=None):
@@ -581,16 +613,19 @@ class Groups(object):
 class UgmBehavior(BaseUgm):
     users: Users = default(None)
     groups: Groups = default(None)
+    group_attr_names = []
+    user_attr_names = []
 
     @override
-    def __init__(self, name, parent, engine=None):
+    def __init__(self, name, parent, *a, group_attr_names=[], user_attr_names=[], engine=None):
         self.__name__ = name
         self.__parent__ = parent
         self.users = Users("users", self)
         self.groups = Groups("groups", self)
+        self.group_attr_names = group_attr_names
+        self.user_attr_names = user_attr_names
         if engine:
             Base.metadata.create_all(engine)
-
 
     @default
     def __call__(self, *a):
