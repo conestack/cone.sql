@@ -104,8 +104,6 @@ def has_autocommit():
 class PrincipalBehavior(Behavior):
     record = default(None)
     """reference to sqlalchemy record instance"""
-    ugm = default(None)
-    """reference to IUgm instance"""
 
     @override
     def __init__(self, name, parent, record):
@@ -338,7 +336,7 @@ class Group(object):
 
 class PrincipalsBehavior(Behavior):
 
-    @finalize
+    @default
     @property
     def ugm(self):
         return self.parent
@@ -438,7 +436,6 @@ class PrincipalsBehavior(Behavior):
 
 
 class UsersBehavior(PrincipalsBehavior, BaseUsers):
-    ugm = default(None)
     record_class = default(SQLUser)
 
     @default
@@ -531,7 +528,6 @@ class Users(object):
 
 
 class GroupsBehavior(PrincipalsBehavior, BaseGroups):
-    ugm = default(None)
     record_class = default(SQLGroup)
 
 
@@ -585,10 +581,11 @@ class Groups(object):
 class UgmBehavior(BaseUgm):
     users: Users = default(None)
     groups: Groups = default(None)
-    name = "Ugm"
 
     @override
     def __init__(self, name, parent, engine=None):
+        self.__name__ = name
+        self.__parent__ = parent
         self.users = Users("users", self)
         self.groups = Groups("groups", self)
         if engine:
