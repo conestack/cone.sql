@@ -1,4 +1,6 @@
-from cone.app import main_hook
+from cone.app import main_hook, ugm_backend, get_root
+from cone.app.ugm import UGMFactory
+from cone.ugm.utils import general_settings
 from sqlalchemy import engine_from_config
 from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import declarative_base
@@ -114,3 +116,47 @@ def initialize_cone_sql(config, global_config, settings):
     config.include('pyramid_tm')
     engine = engine_from_config(settings, prefix)
     initialize_sql(engine)
+
+
+###############################################################################
+# UGM factory
+###############################################################################
+
+@ugm_backend('sql')
+class SqlUGMFactory(UGMFactory):
+    """Custom UGM factory.
+
+    It gets registered via ``ugm_backend`` decorator by name.
+    """
+
+    def __init__(self, settings):
+        """Initialize the factory.
+
+        Passed ``settings`` contains the application settings from the ini
+        file. Thus we are free to define and expect any settings we want.
+
+        On factory initialization, we simply read settings of interest from
+        ``settings`` dict and remember them.
+        """
+
+    def __call__(self):
+        """Create the UGM instance.
+        """
+        from cone.sql.ugm import Ugm  # import must be here, otherwise we have an dependency fuckup
+
+        user_attr_names = []
+        group_attr_names = []
+        if general_settings:
+            model = get_root()
+            user_attr_names = general_settings(model).attrs.users_form_attrmap.keys()
+            group_attr_names = general_settings(model).attrs.groups_form_attrmap.keys()
+
+        res = Ugm(
+            "Ugm",
+            None,
+            group_attr_names=group_attr_names,
+            user_attr_names=user_attr_names,
+            # engine=woodmaster_container.engine
+        )
+
+        return res
