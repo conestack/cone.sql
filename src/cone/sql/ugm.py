@@ -115,7 +115,7 @@ class PrincipalBehavior(Behavior):
     def __name__(self):
         return self.id
 
-    @override
+    @default
     @property
     def ugm(self):
         return self.parent.parent
