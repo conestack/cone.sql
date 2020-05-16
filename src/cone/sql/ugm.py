@@ -72,7 +72,7 @@ class SQLUser(SQLPrincipal):
     __mapper_args__ = {'polymorphic_identity': 'sqluser'}
     guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     __tablename__ = 'user'
-    login = Column(String, unique=True)
+    login = Column(String)
     id = Column(String, unique=True)
     hashed_pw = Column(String)
     groups = association_proxy("sqlgroupassignments", "groups",
@@ -106,7 +106,7 @@ class PrincipalBehavior(Behavior):
     """reference to sqlalchemy record instance"""
 
     @override
-    def __init__(self, name, parent, record):
+    def __init__(self, parent, record):
         self.__parent__ = parent
         self.record = record
 
@@ -461,7 +461,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
             sqluser = self.session.query(SQLUser).filter(SQLUser.id == id).one()
         except NoResultFound as ex:
             raise KeyError(id)
-        return User(id, self, sqluser)
+        return User(self, sqluser)
 
     @default
     def __delitem__(self, id):
@@ -544,7 +544,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
             sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
         except NoResultFound as ex:
             raise KeyError(id)
-        return Group(id, self, sqlgroup)
+        return Group(self, sqlgroup)
 
     @default
     def __delitem__(self, id):
