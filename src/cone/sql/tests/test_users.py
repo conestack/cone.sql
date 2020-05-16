@@ -373,6 +373,15 @@ class TestUserNodes(NodeTestCase):
         )
         assert list(r10) == []
 
+        r11 = users.search(
+            exact_match=False,
+            criteria=dict(
+                id="unobtainable"
+            ),
+            or_search=True
+        )
+        assert list(r11) == []
+
         ## shall work with groups too
         gids = groups.search(
             criteria=dict(

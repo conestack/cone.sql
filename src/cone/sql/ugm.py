@@ -417,8 +417,18 @@ class PrincipalsBehavior(Behavior):
         ]
 
         comparators = fixed_field_comparators + dynamic_comparators
-        clause = op(*comparators)
-        query = self.ugm.users.session.query(cls).filter(clause)
+        if len(comparators) >= 2:
+            clause = op(*comparators)
+        elif len(comparators) == 1:
+            clause = comparators[0]
+        else:
+            clause = None
+
+        basequery = self.ugm.users.session.query(cls)
+        if clause is not None:
+            query = basequery.filter(clause)
+        else:
+            query = basequery
 
         # XXX: should we be lazy here and yield?, would be nice for looong lists
         if attrlist is not None:
@@ -567,6 +577,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     def create(self, _id, **kw):
         sqlgroup = SQLGroup(id=_id, data=kw)
         self.session.add(sqlgroup)
+        self.session.flush()
         return self[_id]
         # return Group(sqlgroup, self.ugm)  # when doing it so, I get weird join errors
 
