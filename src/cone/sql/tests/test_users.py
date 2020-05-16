@@ -119,6 +119,12 @@ class TestUserNodes(NodeTestCase):
         users.set_hashed_pw("phil", users.hash_passwd("test123"))
         print("hashed pwd:", users["phil"].record.hashed_pw)
 
+        users["donald"].passwd(None, "test123")
+        users.passwd("dagobert", None, "test124")
+
+        assert users.authenticate("donald", "test123")
+        assert users.authenticate("dagobert", "test124")
+
         assert "phil" in users
         assert not "zworkb" in users
 

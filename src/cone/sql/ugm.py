@@ -182,6 +182,10 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     def authenticate(self, pw):
         return self.ugm.users.authenticate(self.id, pw)
 
+    @default
+    def passwd(self, old, new):
+        return self.ugm.users.passwd(self.id, old, new)
+
 
 ENCODING = 'utf-8'
 
@@ -208,7 +212,7 @@ class AuthenticationBehavior(Behavior):
         else:
             return False
 
-    @default
+    @override
     def passwd(self, id, oldpw, newpw):
         if id not in self:
             raise ValueError(u"User with id '{}' does not exist.".format(id))
@@ -406,7 +410,7 @@ class PrincipalsBehavior(Behavior):
 
     @default
     def __call__(self):
-        if has_autocommit:
+        if has_autocommit():
             self.session.commit()
 
     @default
@@ -471,6 +475,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
         login = kw.pop("login", None)
         sqluser = SQLUser(id=_id, login=login, data=kw)
         self.session.add(sqluser)
+        self.session.flush()
         return self[_id]
 
     @default
@@ -483,11 +488,15 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
         user = self[id]
         user.record.hashed_pw = hpw
 
-    # @default
-    # def search(self, *a, **kw):
-    #     """had to implement this, because search got routed to """
-    #     return PrincipalsBehavior.search(self, *a, **kw)
+    @default
+    def passwd(self, id, old, new):
+        self[id].passwd(old, new)
 
+    @default
+    def invalidate(self, key=None):
+        """
+        ATM nothing to do here, when we start using caching principals we must remove them here
+        """
 
 @plumbing(
     UsersBehavior,
@@ -500,7 +509,11 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     SQLSession
 )
 class Users(object):
-    pass
+    @default
+    def invalidate(self, key=None):
+        """
+        ATM nothing to do here, when we start using caching principals we must remove them here
+        """
 
 
 class GroupsBehavior(PrincipalsBehavior, BaseGroups):
@@ -585,6 +598,27 @@ class UgmBehavior(BaseUgm):
     def roles(self, principal):
         return principal.roles
 
+    @default
+    def __getitem__(self, k):
+        return getattr(self, k)
+    
+    @default
+    def __iter__(self, k):
+        return iter(["users", "groups"])
+    
+    @default
+    def __setitem__(self, k, v):
+        raise NotImplemented("``__setitem__`` not in cone.sql.ugm.Ugm" )
+
+    @default 
+    def __delitem__(self, k, v):
+        raise NotImplemented("``__delitem__`` not in cone.sql.ugm.Ugm" )
+
+    @default
+    def invalidate(self, key=None):
+        """
+        ATM nothing to do here, when we start using caching principals we must remove them here
+        """
 
 @plumbing(
     UgmBehavior,
