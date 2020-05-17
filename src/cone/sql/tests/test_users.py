@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from cone.sql.ugm import SQLPrincipal as Principal, SQLUser, Base, SQLGroup, Ugm, Group, User, Groups, Users
 
 from cone.sql import testing
+from sqlalchemy.orm.attributes import flag_modified
 
 
 def temp_database(fn):
@@ -393,3 +394,16 @@ class TestUserNodes(NodeTestCase):
 
         del os.environ['CONE_SQL_USE_TM']
 
+        # change fields of a user
+        ugm.session.commit()
+
+        print("====================================================")
+        donald = users["donald"]
+        donald.record.login = "mail"
+        donald.record.data["mail"] = "donald@duck.com"
+        flag_modified(donald.record, "data")
+        ugm.session.commit()
+        print("====================================================")
+        donald1 = users["donald"]
+        assert donald1.record.login == "mail"
+        assert donald1.record.data["mail"] == "donald@duck.com"

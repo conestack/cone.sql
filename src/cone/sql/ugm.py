@@ -34,6 +34,7 @@ from node.ext.ugm import (
 ####################################################
 
 # Base = declarative_base()
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import NoResultFound
 
 
@@ -94,33 +95,60 @@ class PrincipalAttributes(SQLRowNodeAttributes):
         return self.parent.ugm
 
     def __setitem__(self, name, value):
-        if name in self:
+        if name in self.schema_fields:
             setattr(self.record, name, value)
         else:
             self.record.data[name] = value
+            flag_modified(self.record, "data")
 
     def __getitem__(self, name):
         return self.record.get_attribute(name)
-        if name in self:
-            return getattr(self.record, name)
-        raise KeyError('Unknown attribute: {}'.format(name))
+
+    @property
+    def _columns(self):
+        if self.configured_fields:
+            return self.configured_fields
+        else:
+            return self.inspected_fields
+
+    @property
+    def schema_fields(self):
+        """
+        fields that are in the record schema without the technical fields
+        :return: List[str]
+        """
+        tech_fields = ['sqlgroupassignments', 'discriminator', 'guid', 'data', 'principal_roles', 'hashed_pw']
+        schema_fields = [
+            f for f in
+            inspect(self.record.__class__).attrs.keys()
+            if f not in tech_fields
+        ]
+        return schema_fields
+
+    @property
+    def inspected_fields(self):
+        """
+        fields that are in the record schema + keys from .data without the technical fields
+        :return: List[str]
+        """
+        res = self.schema_fields + list(self.record.data.keys())
+        return res
 
 
 class UserAttributes(PrincipalAttributes):
     """"""
+
     @property
-    def _columns(self):
-        fixed_fields = ["id", "login"]
-        # fixed_fields = (self.record.__class__).attrs.keys()
-        return inspect(fixed_fields + self.ugm.user_attr_names)
+    def configured_fields(self):
+        return self.ugm.user_attr_names
 
 
 class GroupAttributeFactory(PrincipalAttributes):
     """"""
-    @property
-    def _columns(self):
-        return inspect(self.record.__class__).attrs.keys() + self.ugm.user_attr_names
 
+    @property
+    def configured_fields(self):
+        return self.ugm.group_attr_names
 
 class PrincipalBehavior(Behavior):
     record = default(None)
