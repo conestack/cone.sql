@@ -100,7 +100,7 @@ def has_autocommit():
     else:
         return False
 
-class PrincipalAttributeFactory(SQLRowNodeAttributes):
+class PrincipalAttributes(SQLRowNodeAttributes):
 
     @property
     def ugm(self):
@@ -118,14 +118,17 @@ class PrincipalAttributeFactory(SQLRowNodeAttributes):
             return getattr(self.record, name)
         raise KeyError('Unknown attribute: {}'.format(name))
 
-class UserAttributeFactory(PrincipalAttributeFactory):
+
+class UserAttributes(PrincipalAttributes):
     """"""
     @property
     def _columns(self):
-        return inspect(self.record.__class__).attrs.keys() + self.ugm.user_attr_names
+        fixed_fields = ["id", "login"]
+        # fixed_fields = (self.record.__class__).attrs.keys()
+        return inspect(fixed_fields + self.ugm.user_attr_names)
 
 
-class GroupAttributeFactory(PrincipalAttributeFactory):
+class GroupAttributeFactory(PrincipalAttributes):
     """"""
     @property
     def _columns(self):
@@ -181,10 +184,6 @@ class PrincipalBehavior(Behavior):
         return self.own_roles
 
     @default
-    def attributes_factory(self, name, parent):
-        return PrincipalAttributeFactory(name, parent, self.record)
-
-    @default
     def __call__(self):
         if has_autocommit():
             self._session.commit()
@@ -225,6 +224,10 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     @default
     def passwd(self, old, new):
         return self.ugm.users.passwd(self.id, old, new)
+
+    @default
+    def attributes_factory(self, name, parent):
+        return UserAttributes(name, parent, self.record)
 
 
 ENCODING = 'utf-8'
@@ -353,6 +356,9 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
             for id in self.member_ids
         ]
 
+    @default
+    def attributes_factory(self, name, parent):
+        return GroupAttributeFactory(name, parent, self.record)
 
 @plumbing(
     GroupBehavior,
@@ -470,7 +476,7 @@ class PrincipalsBehavior(Behavior):
             self.session.commit()
 
     @default
-    def invalidate(self, key=None):
+    def invalidate(self, key=None, *a, **kw):
         """
         ATM nothing to do here, when we start using caching principals we must remove them here
         """
@@ -544,11 +550,11 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     def passwd(self, id, old, new):
         self[id].passwd(old, new)
 
-    @default
-    def invalidate(self, key=None):
-        """
-        ATM nothing to do here, when we start using caching principals we must remove them here
-        """
+    # @default
+    # def invalidate(self, key=None):
+    #     """
+    #     ATM nothing to do here, when we start using caching principals we must remove them here
+    #     """
 
 @plumbing(
     UsersBehavior,
@@ -562,12 +568,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     DefaultInit
 )
 class Users(object):
-    @default
-    def invalidate(self, key=None):
-        """
-        ATM nothing to do here, when we start using caching principals we must remove them here
-        """
-
+    pass
 
 class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     record_class = default(SQLGroup)
@@ -639,7 +640,7 @@ class UgmBehavior(BaseUgm):
             Base.metadata.create_all(engine)
 
     @default
-    def __call__(self, *a):
+    def __call__(self):
         if has_autocommit():
             self.session.commit()
 
@@ -671,11 +672,11 @@ class UgmBehavior(BaseUgm):
     def __delitem__(self, k, v):
         raise NotImplemented("``__delitem__`` not in cone.sql.ugm.Ugm" )
 
-    @default
-    def invalidate(self, key=None):
-        """
-        ATM nothing to do here, when we start using caching principals we must remove them here
-        """
+    # @default
+    # def invalidate(self, key=None):
+    #     """
+    #     ATM nothing to do here, when we start using caching principals we must remove them here
+    #     """
 
 @plumbing(
     UgmBehavior,

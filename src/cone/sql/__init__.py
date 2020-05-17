@@ -1,6 +1,5 @@
 from cone.app import main_hook, ugm_backend, get_root
 from cone.app.ugm import UGMFactory
-from cone.ugm.utils import general_settings
 from sqlalchemy import engine_from_config
 from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import declarative_base
@@ -143,6 +142,11 @@ class SqlUGMFactory(UGMFactory):
         """Create the UGM instance.
         """
         from cone.sql.ugm import Ugm  # import must be here, otherwise we have an dependency fuckup
+        try:
+            from cone.ugm.utils import general_settings
+
+        except ImportError:
+            general_settings = None
 
         user_attr_names = []
         group_attr_names = []
@@ -150,6 +154,10 @@ class SqlUGMFactory(UGMFactory):
             model = get_root()
             user_attr_names = general_settings(model).attrs.users_form_attrmap.keys()
             group_attr_names = general_settings(model).attrs.groups_form_attrmap.keys()
+        else:
+            """
+            TODO: fetch the attr names from .ini
+            """
 
         res = Ugm(
             "Ugm",
