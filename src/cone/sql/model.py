@@ -174,8 +174,9 @@ class SQLTableStorage(Behavior):
     @finalize
     def __call__(self):
         if use_tm():
-            return
-        self.session.commit()
+            self.session.flush()
+        else:
+            self.session.commit()
 
 
 ###############################################################################
@@ -259,8 +260,9 @@ class SQLRowStorage(Behavior):
             session.add(self.record)
             self._new = False
         if use_tm():
-            return
-        session.commit()
+            self.session.flush()
+        else:
+            self.session.commit()
 
 
 ###############################################################################
