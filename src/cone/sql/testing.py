@@ -1,4 +1,5 @@
 from cone.app.testing import Security
+from cone.sql import get_session
 from cone.sql import initialize_sql
 from cone.sql import setup_session
 from cone.sql import sql_session_setup
@@ -29,6 +30,27 @@ def bind_session_listener(session):
     """Test SQL session setup callback.
     """
     event.listen(session, 'after_flush', after_flush)
+
+
+###############################################################################
+# Test decorators
+###############################################################################
+
+class delete_table_records(object):
+
+    def __init__(self, record_cls):
+        self.record_cls = record_cls
+
+    def __call__(self, fn):
+        def wrapper(inst):
+            try:
+                fn(inst)
+            finally:
+                request = inst.layer.new_request()
+                session = get_session(request)
+                session.query(self.record_cls).delete()
+                session.commit()
+        return wrapper
 
 
 ###############################################################################

@@ -35,23 +35,6 @@ def reset_entry_registry(fn):
     return wrapper
 
 
-class delete_table_records(object):
-
-    def __init__(self, record_cls):
-        self.record_cls = record_cls
-
-    def __call__(self, fn):
-        def wrapper(inst):
-            try:
-                fn(inst)
-            finally:
-                request = inst.layer.new_request()
-                session = get_session(request)
-                session.query(self.record_cls).delete()
-                session.commit()
-        return wrapper
-
-
 class UUIDAsPrimaryKeyRecord(SQLBase):
     """Record with UUID as primary key.
     """
@@ -246,7 +229,7 @@ class TestModel(NodeTestCase):
         )
 
     @reset_entry_registry
-    @delete_table_records(IntegerAsPrimaryKeyRecord)
+    @testing.delete_table_records(IntegerAsPrimaryKeyRecord)
     def test_int_as_primary_key(self):
         # Resgister entry
         register_entry('integer_as_key_container', IntegerAsKeyContainer)
@@ -296,7 +279,7 @@ class TestModel(NodeTestCase):
         ])
 
     @reset_entry_registry
-    @delete_table_records(IntegerAsPrimaryKeyRecord)
+    @testing.delete_table_records(IntegerAsPrimaryKeyRecord)
     def test_node_api(self):
         # Resgister entry
         register_entry('integer_as_key_container', IntegerAsKeyContainer)
@@ -465,7 +448,7 @@ class TestModel(NodeTestCase):
         self.assertEqual(list(iter(child)), [])
 
     @reset_entry_registry
-    @delete_table_records(IntegerAsPrimaryKeyRecord)
+    @testing.delete_table_records(IntegerAsPrimaryKeyRecord)
     def test_use_tm(self):
         # Resgister entry
         register_entry('integer_as_key_container', IntegerAsKeyContainer)
@@ -508,7 +491,7 @@ class TestModel(NodeTestCase):
         self.assertEqual(len(res), 1)
 
     @reset_entry_registry
-    @delete_table_records(IntegerAsPrimaryKeyRecord)
+    @testing.delete_table_records(IntegerAsPrimaryKeyRecord)
     def test_sql_session_setup(self):
         # Resgister entry
         register_entry('integer_as_key_container', IntegerAsKeyContainer)
