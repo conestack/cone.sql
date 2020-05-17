@@ -48,7 +48,7 @@ def setup_session(session):
 def use_tm():
     """Flag whether transaction manager is used.
     """
-    return os.environ['CONE_SQL_USE_TM'] == '1'
+    return os.environ.get('CONE_SQL_USE_TM') == '1'
 
 
 ###############################################################################

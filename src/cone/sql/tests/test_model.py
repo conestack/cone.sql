@@ -3,6 +3,7 @@ from cone.app import register_entry
 from cone.sql import get_session
 from cone.sql import SQLBase
 from cone.sql import testing
+from cone.sql import use_tm
 from cone.sql.model import GUID
 from cone.sql.model import SQLRowNode
 from cone.sql.model import SQLTableNode
@@ -16,6 +17,7 @@ from sqlalchemy.engine import default
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.unitofwork import UOWTransaction
 from sqlalchemy.sql.sqltypes import CHAR
+import os
 import uuid
 
 
@@ -31,6 +33,23 @@ def reset_entry_registry(fn):
             for key in set(root.factories.keys()).difference(factories):
                 del root.factories[key]
     return wrapper
+
+
+class delete_table_records(object):
+
+    def __init__(self, record_cls):
+        self.record_cls = record_cls
+
+    def __call__(self, fn):
+        def wrapper(inst):
+            try:
+                fn(inst)
+            finally:
+                request = inst.layer.new_request()
+                session = get_session(request)
+                session.query(self.record_cls).delete()
+                session.commit()
+        return wrapper
 
 
 class UUIDAsPrimaryKeyRecord(SQLBase):
@@ -227,6 +246,7 @@ class TestModel(NodeTestCase):
         )
 
     @reset_entry_registry
+    @delete_table_records(IntegerAsPrimaryKeyRecord)
     def test_int_as_primary_key(self):
         # Resgister entry
         register_entry('integer_as_key_container', IntegerAsKeyContainer)
@@ -276,6 +296,7 @@ class TestModel(NodeTestCase):
         ])
 
     @reset_entry_registry
+    @delete_table_records(IntegerAsPrimaryKeyRecord)
     def test_node_api(self):
         # Resgister entry
         register_entry('integer_as_key_container', IntegerAsKeyContainer)
@@ -284,6 +305,7 @@ class TestModel(NodeTestCase):
         # cannot be converted to primary key data type
         root = get_root()
         container = root['integer_as_key_container']
+
         err = self.expect_error(KeyError, container.__getitem__, 'a')
         expected = (
             '"Failed to convert node name to expected primary key data type: '
@@ -346,7 +368,7 @@ class TestModel(NodeTestCase):
         request = self.layer.new_request()
         session = get_session(request)
         res = session.query(IntegerAsPrimaryKeyRecord).all()
-        self.assertEqual(len(res), 2)
+        self.assertEqual(len(res), 1)
 
         # Override child
         child = IntegerAsKeyNode()
@@ -361,7 +383,7 @@ class TestModel(NodeTestCase):
         request = self.layer.new_request()
         session = get_session(request)
         res = session.query(IntegerAsPrimaryKeyRecord).all()
-        self.assertEqual(len(res), 2)
+        self.assertEqual(len(res), 1)
 
         # Delete child
         del container['123']
@@ -369,7 +391,16 @@ class TestModel(NodeTestCase):
         request = self.layer.new_request()
         session = get_session(request)
         res = session.query(IntegerAsPrimaryKeyRecord).all()
-        self.assertEqual(len(res), 1)
+        self.assertEqual(len(res), 0)
+
+        # Other than most other node implementations, ``TableRowNodes`` can be
+        # persisted without being hooked up to the tree directly.
+        child = IntegerAsKeyNode()
+        child.attrs['integer_key'] = 1234
+        child.attrs['field'] = u'Value'
+        child()
+
+        self.assertEqual(container.keys(), ['1234'])
 
         # Update Child
         child = container['1234']
@@ -382,15 +413,6 @@ class TestModel(NodeTestCase):
             session.query(IntegerAsPrimaryKeyRecord).first().field,
             u'Updated Value'
         )
-
-        # Other than most other node implementations, ``TableRowNodes`` can be
-        # persisted without being hooked up to the tree directly.
-        child = IntegerAsKeyNode()
-        child.attrs['integer_key'] = 1235
-        child.attrs['field'] = u'Value'
-        child()
-
-        self.assertEqual(container.keys(), ['1234', '1235'])
 
         # Access inexisting attributes
         err = self.expect_error(
@@ -443,6 +465,50 @@ class TestModel(NodeTestCase):
         self.assertEqual(list(iter(child)), [])
 
     @reset_entry_registry
+    @delete_table_records(IntegerAsPrimaryKeyRecord)
+    def test_use_tm(self):
+        # Resgister entry
+        register_entry('integer_as_key_container', IntegerAsKeyContainer)
+
+        root = get_root()
+        container = root['integer_as_key_container']
+
+        # transaction manager used
+        os.environ['CONE_SQL_USE_TM'] = '1'
+        self.assertTrue(use_tm())
+
+        request = self.layer.new_request()
+        container['1'] = IntegerAsKeyNode()
+        # calling the container flushed session
+        container()
+
+        session = get_session(request)
+        res = session.query(IntegerAsPrimaryKeyRecord).all()
+        self.assertEqual(len(res), 1)
+        # rollback works, session was just flushed
+        session.rollback()
+        res = session.query(IntegerAsPrimaryKeyRecord).all()
+        self.assertEqual(len(res), 0)
+
+        # no transaction manager used
+        os.environ['CONE_SQL_USE_TM'] = '0'
+        self.assertFalse(use_tm())
+
+        request = self.layer.new_request()
+        container['1'] = IntegerAsKeyNode()
+        # calling the container commits session
+        container()
+
+        session = get_session(request)
+        res = session.query(IntegerAsPrimaryKeyRecord).all()
+        self.assertEqual(len(res), 1)
+        # rollback has not effect, session was commited
+        session.rollback()
+        res = session.query(IntegerAsPrimaryKeyRecord).all()
+        self.assertEqual(len(res), 1)
+
+    @reset_entry_registry
+    @delete_table_records(IntegerAsPrimaryKeyRecord)
     def test_sql_session_setup(self):
         # Resgister entry
         register_entry('integer_as_key_container', IntegerAsKeyContainer)
