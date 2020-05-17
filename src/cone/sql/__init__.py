@@ -6,6 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from zope.sqlalchemy import register
+import os
 
 
 ###############################################################################
@@ -42,6 +43,12 @@ def setup_session(session):
     """
     for session_setup_callback in _session_setup_handlers:
         session_setup_callback(session)
+
+
+def use_tm():
+    """Flag whether transaction manager is used.
+    """
+    return os.environ['CONE_SQL_USE_TM'] == '1'
 
 
 ###############################################################################
@@ -111,11 +118,11 @@ def initialize_cone_sql(config, global_config, settings):
     prefix = 'cone.sql.dbinit.'
     if settings.get('{}url'.format(prefix), None) is None:  # pragma: no cover
         return
-    config.include('pyramid_retry')
-    config.include('pyramid_tm')
     engine = engine_from_config(settings, prefix)
     initialize_sql(engine)
 
+    use_tm = settings.get('pyramid.includes', '').find('pyramid_tm') > -1
+    os.environ['CONE_SQL_USE_TM'] = '1' if use_tm else '0'
 
 ###############################################################################
 # UGM factory
@@ -168,3 +175,4 @@ class SqlUGMFactory(UGMFactory):
         )
 
         return res
+

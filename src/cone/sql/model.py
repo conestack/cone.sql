@@ -1,5 +1,6 @@
 from cone.app.model import AppNode
 from cone.sql import get_session
+from cone.sql import use_tm
 from node.behaviors import Adopt
 from node.behaviors import Attributes
 from node.behaviors import DefaultInit
@@ -172,8 +173,10 @@ class SQLTableStorage(Behavior):
 
     @finalize
     def __call__(self):
-        session = self.session
-        session.commit()
+        if use_tm():
+            self.session.flush()
+        else:
+            self.session.commit()
 
 
 ###############################################################################
@@ -256,7 +259,10 @@ class SQLRowStorage(Behavior):
         if self._new:
             session.add(self.record)
             self._new = False
-        session.commit()
+        if use_tm():
+            self.session.flush()
+        else:
+            self.session.commit()
 
 
 ###############################################################################

@@ -15,6 +15,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 from cone.sql.model import GUID, SQLRowNodeAttributes, SQLSession, UNICODE_TYPE
 from cone.sql import SQLBase as Base
+from cone.sql import use_tm
 
 from sqlalchemy.orm import relationship, Session, object_session
 
@@ -85,20 +86,6 @@ class SQLUser(SQLPrincipal):
 # Node classes
 ####################################################
 
-def has_autocommit():
-    """
-    retrieve the autocommit flag from env
-    only "True", "False" are allowed
-    :return: bool
-    """
-    ac = os.environ.get("UGM_SQL_AUTOCOMMIT", "False").lower()
-    if ac not in ["true", "false"]:
-        raise ValueError(f"autocommit must be true/false, got {ac}")
-
-    if ac == "true":
-        return True
-    else:
-        return False
 
 class PrincipalAttributes(SQLRowNodeAttributes):
 
@@ -185,8 +172,10 @@ class PrincipalBehavior(Behavior):
 
     @default
     def __call__(self):
-        if has_autocommit():
-            self._session.commit()
+        if use_tm():
+            self.session.flush()
+        else:
+            self.session.commit()
 
 
 class UserBehavior(PrincipalBehavior, BaseUser):
@@ -472,7 +461,9 @@ class PrincipalsBehavior(Behavior):
 
     @default
     def __call__(self):
-        if has_autocommit():
+        if use_tm():
+            self.session.flush()
+        else:
             self.session.commit()
 
     @default
@@ -641,7 +632,9 @@ class UgmBehavior(BaseUgm):
 
     @default
     def __call__(self):
-        if has_autocommit():
+        if use_tm():
+            self.session.flush()
+        else:
             self.session.commit()
 
     @default
@@ -672,14 +665,16 @@ class UgmBehavior(BaseUgm):
     def __delitem__(self, k, v):
         raise NotImplemented("``__delitem__`` not in cone.sql.ugm.Ugm" )
 
-    # @default
-    # def invalidate(self, key=None):
-    #     """
-    #     ATM nothing to do here, when we start using caching principals we must remove them here
-    #     """
+    @default
+    def invalidate(self, key=None):
+        """
+        ATM nothing to do here, when we start using caching principals we must remove them here
+        """
 
 @plumbing(
     UgmBehavior,
-    Nodify)
+    Nodify,
+    SQLSession,
+)
 class Ugm(object):
     pass

@@ -38,6 +38,10 @@ up the related elements to the WSGI pipeline.
     [app:my_app]
     use = egg:cone.app#main
 
+    pyramid.includes =
+        pyramid_retry
+        pyramid_tm
+
     tm.commit_veto = pyramid_tm.default_commit_veto
 
     cone.plugins =

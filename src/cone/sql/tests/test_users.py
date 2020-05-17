@@ -102,6 +102,7 @@ class TestUserNodes(NodeTestCase):
     layer = testing.sql_layer
 
     def test_node_users(self):
+        os.environ['CONE_SQL_USE_TM'] = '0'
         self.layer.new_request()
 
         # setup ugm
@@ -389,4 +390,6 @@ class TestUserNodes(NodeTestCase):
             )
         )
         assert gids == ["managers"]
+
+        del os.environ['CONE_SQL_USE_TM']
 
