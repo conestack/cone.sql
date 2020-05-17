@@ -17,10 +17,12 @@ Changes
 - Register SQL session to transaction manager with ``zope.sqlalchemy.register``.
   [rnix]
 
-- Use ``pyramid_tm`` instead of ``repoze.tm2``.
+- Use ``pyramid_tm`` instead of ``repoze.tm2``. Disabled by default, must be
+  enabled explicitely via ``pyramid.includes``.
   [rnix]
 
-- Use ``pyramid_retry`` instead of ``repoze.retry``.
+- Use ``pyramid_retry`` instead of ``repoze.retry``. Disabled by default, must be
+  enabled explicitely via ``pyramid.includes``.
   [rnix]
 
 - Upgrade to ``cone.app`` 1.0b1.
