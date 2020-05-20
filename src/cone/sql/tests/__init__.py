@@ -6,14 +6,14 @@ def test_suite():
     from cone.sql.tests import test_sql
     from cone.sql.tests import test_model
     from cone.sql.tests import test_acl
-    from cone.sql.tests import test_users
+    from cone.sql.tests import test_ugm
 
     suite = unittest.TestSuite()
 
-    # suite.addTest(unittest.findTestCases(test_sql))
-    # suite.addTest(unittest.findTestCases(test_model))
-    # suite.addTest(unittest.findTestCases(test_acl))
-    suite.addTest(unittest.findTestCases(test_users))
+    suite.addTest(unittest.findTestCases(test_sql))
+    suite.addTest(unittest.findTestCases(test_model))
+    suite.addTest(unittest.findTestCases(test_acl))
+    suite.addTest(unittest.findTestCases(test_ugm))
 
     return suite
 
