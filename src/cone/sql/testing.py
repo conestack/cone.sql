@@ -1,6 +1,7 @@
 import os
 
 from cone.app.testing import Security
+from cone.sql import get_session
 from cone.sql import initialize_sql
 from cone.sql import setup_session
 from cone.sql import sql_session_setup
@@ -34,6 +35,27 @@ def bind_session_listener(session):
 
 
 ###############################################################################
+# Test decorators
+###############################################################################
+
+class delete_table_records(object):
+
+    def __init__(self, record_cls):
+        self.record_cls = record_cls
+
+    def __call__(self, fn):
+        def wrapper(inst):
+            try:
+                fn(inst)
+            finally:
+                request = inst.layer.new_request()
+                session = get_session(request)
+                session.query(self.record_cls).delete()
+                session.commit()
+        return wrapper
+
+
+###############################################################################
 # Test layer
 ###############################################################################
 
@@ -55,11 +77,11 @@ class SQLLayer(Security):
         return request
 
     def init_sql(self):
-        # engine = create_engine('sqlite:///:memory:', echo=True)
+        # engine = create_engine('sqlite:///:memory:', echo=False)
 
         # alternatively use postgresql - ditches db before start
         os.system("dropdb ugm; createdb ugm")
-        engine = create_engine("postgresql:///ugm", echo=True)
+        engine = create_engine("postgresql:///ugm", echo=False)
 
         # sqlite persistent in package folder for post mortem analysis
         # curdir = os.path.dirname(__file__)

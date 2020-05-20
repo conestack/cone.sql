@@ -519,7 +519,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
                 ).one()
             return res.id
         except NoResultFound:
-            # if we dont find a login field, fall back to the login
+            # if we dont find a login field, fall back assuming id is login
             return login
 
     @default
@@ -569,11 +569,6 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     def passwd(self, id, old, new):
         self[id].passwd(old, new)
 
-    # @default
-    # def invalidate(self, key=None):
-    #     """
-    #     ATM nothing to do here, when we start using caching principals we must remove them here
-    #     """
 
 @plumbing(
     UsersBehavior,
@@ -641,22 +636,48 @@ class Groups(object):
     pass
 
 
+class UgmSettings:
+    def __init__(self, settings=None):
+        from cone.app import get_root
+        ugm_settings = self
+        ugm_settings.user_attr_names = [
+            att.strip() for att in
+            settings.get("ugm.user_attr_names", "").split(",")
+            if att
+        ]
+        ugm_settings.group_attr_names = [
+            att.strip() for att in
+            settings.get("ugm.group_attr_names", "").split(",")
+            if att
+        ]
+
+        try: # try to read user_attr_names and group_attr_names from ugm.xml
+            from cone.ugm.utils import general_settings
+            model = get_root()
+            try:
+                ugm_config_attrs = general_settings(model).attrs
+                ugm_settings.user_attr_names = ugm_config_attrs.users_form_attrmap.keys()
+                ugm_settings.group_attr_names = ugm_config_attrs.groups_form_attrmap.keys()
+            except ValueError:
+                ...
+        except ImportError:
+            ...
+
+
 class UgmBehavior(BaseUgm):
     users: Users = default(None)
     groups: Groups = default(None)
-    group_attr_names = []
-    user_attr_names = []
+    group_attr_names = default([])
+    user_attr_names = default([])
+    settings = default(None)
 
     @override
-    def __init__(self, name, parent, *a, group_attr_names=[], user_attr_names=[], engine=None):
+    def __init__(self, name, parent, ugm_settings):
         self.__name__ = name
         self.__parent__ = parent
         self.users = Users("users", self)
         self.groups = Groups("groups", self)
-        self.group_attr_names = group_attr_names
-        self.user_attr_names = user_attr_names
-        if engine:
-            Base.metadata.create_all(engine)
+        self.settings = ugm_settings
 
     @default
     def __call__(self):
@@ -698,6 +719,16 @@ class UgmBehavior(BaseUgm):
         """
         ATM nothing to do here, when we start using caching principals we must remove them here
         """
+
+    @default
+    @property
+    def group_attr_names(self):
+        return self.settings.group_attr_names
+
+    @default
+    @property
+    def user_attr_names(self):
+        return self.settings.user_attr_names
 
 @plumbing(
     UgmBehavior,

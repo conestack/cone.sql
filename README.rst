@@ -47,7 +47,7 @@ up the related elements to the WSGI pipeline.
     cone.plugins =
         cone.sql
 
-    cone.sql.dbinit.url = sqlite:///%(here)s/var/sqlite/my_db.db
+    cone.sql.db.url = sqlite:///%(here)s/var/sqlite/my_db.db
 
     [filter:remote_addr]
     # for use behind nginx
@@ -55,7 +55,6 @@ up the related elements to the WSGI pipeline.
 
     [filter:session]
     use = egg:cone.sql#session
-    sqlalchemy.url = sqlite:///%(here)s/var/sqlite/my_db.db
 
     [pipeline:main]
     pipeline =
@@ -159,8 +158,10 @@ session setup tasks like registering SQLAlchemy event listeners.
 Query the database
 ------------------
 
-Querying the database is done via SQLAlchemy. You can acquire the session from
-request via ``get_session`` and perform arbitrary operations on it.
+Querying the database is done via SQLAlchemy. If you are in a request/response
+cycle, you should acquire the session from request via ``get_session`` and
+perform arbitrary operations on it. By reading the session from request we ensure
+the transaction manager to work properly if configured.
 
 .. code-block:: python
 
@@ -168,6 +169,17 @@ request via ``get_session`` and perform arbitrary operations on it.
 
     session = get_session(request)
     result = session.query(MyRecord).all()
+
+If you need a session outside a request/response cycle you can create one by using
+the ``session_factory``.
+
+.. code-block:: python
+
+    from cone.sql import session_factory
+
+    session = session_factory()
+    result = session.query(MyRecord).all()
+    session.close()
 
 
 Principal ACL's

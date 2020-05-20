@@ -69,6 +69,28 @@ def initialize_sql(engine):
 
 
 ###############################################################################
+# Session Factory
+###############################################################################
+
+class SQLSessionFactory(object):
+    """SQL session factory.
+    """
+
+    def __init__(self, settings, prefix):
+        self.engine = engine_from_config(settings, prefix=prefix)
+        self.maker = sessionmaker(bind=self.engine)
+
+    def __call__(self):
+        session = self.maker()
+        setup_session(session)
+        return session
+
+
+# Global session factory singleton.
+session_factory = None
+
+
+###############################################################################
 # WSGI
 ###############################################################################
 
@@ -79,14 +101,12 @@ class WSGISQLSession(object):
     normally under the key 'cone.sql.session'.
     """
 
-    def __init__(self, next_app, maker, session_key=session_key):
+    def __init__(self, next_app, session_key=session_key):
         self.next_app = next_app
-        self.maker = maker
         self.session_key = session_key
 
     def __call__(self, environ, start_response):
-        session = self.maker()
-        setup_session(session)
+        session = session_factory()
         register(session)
         environ[self.session_key] = session
         try:
@@ -100,10 +120,8 @@ def make_app(next_app, global_conf, **local_conf):
     """Create ``WSGISQLSession``.
     """
     from cone import sql
-    engine = engine_from_config(local_conf, prefix='sqlalchemy.')
-    maker = sessionmaker(bind=engine)
     sql.session_key = local_conf.get('session_key', sql.session_key)
-    return WSGISQLSession(next_app, maker, sql.session_key)
+    return WSGISQLSession(next_app, sql.session_key)
 
 
 ###############################################################################
@@ -115,14 +133,15 @@ def initialize_cone_sql(config, global_config, settings):
     """Cone startup application initialization.
     """
     # database initialization
-    prefix = 'cone.sql.dbinit.'
+    prefix = 'cone.sql.db.'
     if settings.get('{}url'.format(prefix), None) is None:  # pragma: no cover
         return
-    engine = engine_from_config(settings, prefix)
-    initialize_sql(engine)
-
+    global session_factory
+    session_factory = SQLSessionFactory(settings, prefix)
+    initialize_sql(session_factory.engine)
     use_tm = settings.get('pyramid.includes', '').find('pyramid_tm') > -1
     os.environ['CONE_SQL_USE_TM'] = '1' if use_tm else '0'
+
 
 ###############################################################################
 # UGM factory
@@ -134,6 +153,7 @@ class SqlUGMFactory(UGMFactory):
 
     It gets registered via ``ugm_backend`` decorator by name.
     """
+    ugm_settings = None
 
     def __init__(self, settings):
         """Initialize the factory.
@@ -144,34 +164,18 @@ class SqlUGMFactory(UGMFactory):
         On factory initialization, we simply read settings of interest from
         ``settings`` dict and remember them.
         """
+        from cone.sql.ugm import Ugm, UgmSettings
+
+        self.ugm_settings = UgmSettings(settings)
 
     def __call__(self):
         """Create the UGM instance.
         """
-        from cone.sql.ugm import Ugm  # import must be here, otherwise we have an dependency fuckup
-        try:
-            from cone.ugm.utils import general_settings
-
-        except ImportError:
-            general_settings = None
-
-        user_attr_names = []
-        group_attr_names = []
-        if general_settings:
-            model = get_root()
-            user_attr_names = general_settings(model).attrs.users_form_attrmap.keys()
-            group_attr_names = general_settings(model).attrs.groups_form_attrmap.keys()
-        else:
-            """
-            TODO: fetch the attr names from .ini
-            """
-
+        from cone.sql.ugm import Ugm
         res = Ugm(
             "Ugm",
             None,
-            group_attr_names=group_attr_names,
-            user_attr_names=user_attr_names,
-            # engine=woodmaster_container.engine
+            self.ugm_settings
         )
 
         return res
