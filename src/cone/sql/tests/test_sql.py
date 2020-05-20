@@ -31,7 +31,7 @@ tm.commit_veto = pyramid_tm.default_commit_veto
 cone.plugins =
     cone.sql
 
-cone.sql.dbinit.url = sqlite:///:memory:
+cone.sql.db.url = sqlite:///:memory:
 
 [filter:remote_addr]
 # for use behind nginx
@@ -39,7 +39,6 @@ use = egg:cone.app#remote_addr
 
 [filter:session]
 use = egg:cone.sql#session
-sqlalchemy.url = sqlite:///:memory:
 
 [pipeline:main]
 pipeline =

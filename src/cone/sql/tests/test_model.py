@@ -456,39 +456,57 @@ class TestModel(NodeTestCase):
         root = get_root()
         container = root['integer_as_key_container']
 
-        # transaction manager used
+        # create a base entry for direct node modification test
+        request = self.layer.new_request()
+        node = container['1'] = IntegerAsKeyNode()
+        node.attrs['field'] = 'Value'
+        node()
+
+        # transaction manager used, calling nodes flushes session
         os.environ['CONE_SQL_USE_TM'] = '1'
         self.assertTrue(use_tm())
 
-        request = self.layer.new_request()
-        container['1'] = IntegerAsKeyNode()
-        # calling the container flushed session
+        # modify existing node
+        node.attrs['field'] = 'New'
+        node()
+
+        # create new node
+        container['2'] = IntegerAsKeyNode()
         container()
 
         session = get_session(request)
         res = session.query(IntegerAsPrimaryKeyRecord).all()
-        self.assertEqual(len(res), 1)
+        self.assertEqual(len(res), 2)
+        self.assertEqual(res[0].field, 'New')
+
         # rollback works, session was just flushed
         session.rollback()
         res = session.query(IntegerAsPrimaryKeyRecord).all()
-        self.assertEqual(len(res), 0)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0].field, 'Value')
 
-        # no transaction manager used
+        # no transaction manager used, calling nodes commits session
         os.environ['CONE_SQL_USE_TM'] = '0'
         self.assertFalse(use_tm())
 
-        request = self.layer.new_request()
-        container['1'] = IntegerAsKeyNode()
-        # calling the container commits session
+        # modify existing node
+        node.attrs['field'] = 'New'
+        node()
+
+        # create new node
+        container['2'] = IntegerAsKeyNode()
         container()
 
         session = get_session(request)
         res = session.query(IntegerAsPrimaryKeyRecord).all()
-        self.assertEqual(len(res), 1)
+        self.assertEqual(len(res), 2)
+        self.assertEqual(res[0].field, 'New')
+
         # rollback has not effect, session was commited
         session.rollback()
         res = session.query(IntegerAsPrimaryKeyRecord).all()
-        self.assertEqual(len(res), 1)
+        self.assertEqual(len(res), 2)
+        self.assertEqual(res[0].field, 'New')
 
     @reset_entry_registry
     @testing.delete_table_records(IntegerAsPrimaryKeyRecord)

@@ -5,6 +5,18 @@ Changes
 0.2 (unreleased)
 ----------------
 
+- Introduce ``cone.sql.SQLSessionFactory``. Gets instanciated at application
+  startup as singleton at ``cone.sql.session_factory``.
+  [rnix]
+
+- SQL database URL setting key in ini file changed from ``cone.sql.dbinit.url``
+  to ``cone.sql.db.url``.
+  [rnix]
+
+- SQL database URL definition is only required once in the ``app`` section of
+  the ini file. ``sqlalchemy.url`` can be removed from session filter.
+  [rnix]
+
 - Add SQL based principal ACL support.
   [rnix]
 
