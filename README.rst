@@ -249,7 +249,7 @@ cone.sql.ugm
 ``cone.sql.ugm`` is an implementation of the ``node.ext.ugm.interfaces`` contract, where
 principals, users and groups are stored in sql tables.
 
-.. uml ::
+.. uml::
 
     @startuml
 
