@@ -302,6 +302,7 @@ groups.
 Additionally options:
 
 .. code-block:: ini
+
     ugm.log_authentication = True
     ugm.user_attr_names = id, login, schas
     ugm.group_attr_names = groupname, maxmembers
