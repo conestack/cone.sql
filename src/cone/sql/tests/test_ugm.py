@@ -6,7 +6,8 @@ from node.tests import NodeTestCase
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from cone.sql.ugm import SQLPrincipal as Principal, SQLUser, Base, SQLGroup, Ugm, Group, User, Groups, Users
+from cone.sql.ugm import SQLPrincipal as Principal, SQLUser, Base, SQLGroup, Ugm, Group, User, Groups, Users, \
+    UgmSettings
 
 from cone.sql import testing
 from sqlalchemy.orm.attributes import flag_modified
@@ -107,7 +108,14 @@ class TestUserNodes(NodeTestCase):
         self.layer.new_request()
 
         # setup ugm
-        ugm = Ugm("Ugm", None)
+        settings = UgmSettings(
+            {
+                "ugm.user_attr_names": "phone, address",
+                "ugm.group_attr_names": "description",
+                "ugm.log_authentication": "true"
+            }
+        )
+        ugm = Ugm("Ugm", None, settings)
         users = ugm.users
         groups = ugm.groups
 

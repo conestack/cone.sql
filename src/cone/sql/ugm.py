@@ -5,13 +5,12 @@ import os
 import uuid
 from datetime import datetime
 from operator import or_
-from weakref import finalize
 
 from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
 from plumber import plumbing, Behavior, default, override
 from sqlalchemy import Column, String, ForeignKey, JSON, cast, and_, Integer, DateTime, inspect
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import declarative_base
 
 from cone.sql.model import GUID, SQLRowNodeAttributes, SQLSession, UNICODE_TYPE
 from cone.sql import SQLBase as Base
@@ -29,8 +28,16 @@ from node.ext.ugm import (
     Ugm as BaseUgm
 )
 
+# hack: force sqlite to alias JSONB as JSON
+# this allows to use JSONB for the sqlalchemy variant, which is much more efficient
+# when it comes to indexing and searching
+from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+SQLiteTypeCompiler.visit_JSONB = SQLiteTypeCompiler.visit_JSON
+
 ####################################################
 # SQLAlchemy model classes
+# currently PostgreSQL and SQLite are tested and supported
+# for integration of other databases JSON support has to be checked
 ####################################################
 
 # Base = declarative_base()
@@ -43,8 +50,9 @@ class SQLPrincipal(Base):
     discriminator = Column(String)
     __mapper_args__ = {'polymorphic_on': discriminator}
     guid = Column(GUID, default=lambda: str(uuid.uuid4()), index=True, primary_key=True)
-    data = Column(JSON, )
-    principal_roles = Column(JSON, default=[])
+    data = Column(JSONB, )
+    principal_roles = Column(JSONB, default=[])
+    created = Column(DateTime, default=datetime.now)
 
     def get_attribute(self, key, default=None):
         try:
@@ -77,6 +85,8 @@ class SQLUser(SQLPrincipal):
     login = Column(String)
     id = Column(String, unique=True)
     hashed_pw = Column(String)
+    first_login = Column(DateTime, nullable=True)
+    last_login = Column(DateTime, nullable=True)
     groups = association_proxy("sqlgroupassignments", "groups",
                                creator=lambda c: SQLGroupAssignment(groups=c))
     sqlgroupassignments = relationship('SQLGroupAssignment', backref='users',
@@ -260,6 +270,9 @@ class AuthenticationBehavior(Behavior):
     salt_len = default(8)
     hash_func = default(hashlib.sha256)
 
+    def on_authenticated(self, id, **kw):
+        """can be overriden to do after-authentication stuff"""
+
     @override
     def authenticate(self, id=None, pw=None):
         # cannot authenticate user with unset password
@@ -268,7 +281,11 @@ class AuthenticationBehavior(Behavior):
 
         hpw = self.get_hashed_pw(id)
         if hpw:
-            return self._chk_pw(pw, hpw)
+            authenticated = self._chk_pw(pw, hpw)
+            if authenticated:
+                self.on_authenticated(id)
+
+            return authenticated
         else:
             return False
 
@@ -569,6 +586,15 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     def passwd(self, id, old, new):
         self[id].passwd(old, new)
 
+    @default
+    def on_authenticated(self, id, **kw):
+        if self.ugm.settings.log_authentication:
+            user = self[id]
+            now = datetime.now()
+            if user.record.first_login is None:
+                user.record.first_login = now
+
+            user.record.last_login = now
 
 @plumbing(
     UsersBehavior,
@@ -637,31 +663,41 @@ class Groups(object):
 
 
 class UgmSettings:
+    user_attr_names = []
+    group_attr_names = []
+    log_authentication = False
+    """handle first_login and last_login attributes on authentication"""
     def __init__(self, settings=None):
         from cone.app import get_root
-        ugm_settings = self
-        ugm_settings.user_attr_names = [
+        self.user_attr_names = [
             att.strip() for att in
             settings.get("ugm.user_attr_names", "").split(",")
             if att
         ]
-        ugm_settings.group_attr_names = [
+        self.group_attr_names = [
             att.strip() for att in
             settings.get("ugm.group_attr_names", "").split(",")
             if att
         ]
+        log_authentication = settings.get("ugm.log_authentication", "false").lower()
+        if log_authentication in ("true", "false"):
+            self.log_authentication = True if log_authentication == "true" else False
+        else:
+            raise ValueError("only 'true' or 'false' allowed for option 'log_authentication'")
 
         try: # try to read user_attr_names and group_attr_names from ugm.xml
             from cone.ugm.utils import general_settings
             model = get_root()
             try:
                 ugm_config_attrs = general_settings(model).attrs
-                ugm_settings.user_attr_names = ugm_config_attrs.users_form_attrmap.keys()
-                ugm_settings.group_attr_names = ugm_config_attrs.groups_form_attrmap.keys()
+                self.user_attr_names = ugm_config_attrs.users_form_attrmap.keys()
+                self.group_attr_names = ugm_config_attrs.groups_form_attrmap.keys()
             except ValueError:
-                ...
+                pass
+            except KeyError:
+                pass
         except ImportError:
-            ...
+            pass
 
 
 class UgmBehavior(BaseUgm):
@@ -677,7 +713,7 @@ class UgmBehavior(BaseUgm):
         self.__parent__ = parent
         self.users = Users("users", self)
         self.groups = Groups("groups", self)
-        self.settings = ugm_settings
+        self.settings = ugm_settings if ugm_settings else UgmSettings()
 
     @default
     def __call__(self):
