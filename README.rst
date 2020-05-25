@@ -314,7 +314,7 @@ Additionally options:
    and last login timestamp will be updated for each successful authentication
 - ``ugm.user_attr_names`` and ``ugm.group_attr_names``:
    if not already configured in ``ugm.xml`` these can be set in the .ini file
-    using a comma-separed list of strings.
+   using a comma-separed list of strings.
 
 cone.ugm integration
 --------------------
