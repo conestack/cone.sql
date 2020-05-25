@@ -242,3 +242,33 @@ Contributors
 ============
 
 - Robert Niederreiter (Author)
+
+cone.sql.ugm
+============
+
+``cone.sql.ugm`` is an implementation of the ``node.ext.ugm.interfaces`` contract, where
+principals, users and groups are stored in sql tables.
+
+.. uml ::
+
+    @startuml
+
+    class Principal{
+        + guid: UUID
+    }
+
+    class User: Principal {
+        + id: UUID
+    }
+
+    class Group{
+        + id: UUID
+    }
+
+    class GroupAssignment{
+    }
+
+    @enduml
+
+
+
