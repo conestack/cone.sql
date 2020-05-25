@@ -32,6 +32,7 @@ from node.ext.ugm import (
 # this allows to use JSONB for the sqlalchemy variant, which is much more efficient
 # when it comes to indexing and searching
 from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+
 SQLiteTypeCompiler.visit_JSONB = SQLiteTypeCompiler.visit_JSON
 
 ####################################################
@@ -43,6 +44,8 @@ SQLiteTypeCompiler.visit_JSONB = SQLiteTypeCompiler.visit_JSON
 # Base = declarative_base()
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import NoResultFound
+
+ENCODING = 'utf-8'
 
 
 class SQLPrincipal(Base):
@@ -99,6 +102,10 @@ class SQLUser(SQLPrincipal):
 
 
 class PrincipalAttributes(SQLRowNodeAttributes):
+    """
+    define field names based on the configured fields in
+    .ini file, ugm.xml and the given SQL schema
+    """
 
     @property
     def ugm(self):
@@ -138,7 +145,7 @@ class PrincipalAttributes(SQLRowNodeAttributes):
     @property
     def inspected_fields(self):
         """
-        fields that are in the record schema + keys from .data without the technical fields
+        fields that are in the record schema + keys from record.data without the technical fields
         :return: List[str]
         """
         res = self.schema_fields + list(self.record.data.keys())
@@ -146,7 +153,6 @@ class PrincipalAttributes(SQLRowNodeAttributes):
 
 
 class UserAttributes(PrincipalAttributes):
-    """"""
 
     @property
     def configured_fields(self):
@@ -154,13 +160,14 @@ class UserAttributes(PrincipalAttributes):
 
 
 class GroupAttributeFactory(PrincipalAttributes):
-    """"""
 
     @property
     def configured_fields(self):
         return self.ugm.group_attr_names
 
+
 class PrincipalBehavior(Behavior):
+
     record = default(None)
     """reference to sqlalchemy record instance"""
 
@@ -217,6 +224,7 @@ class PrincipalBehavior(Behavior):
 
 
 class UserBehavior(PrincipalBehavior, BaseUser):
+
     @default
     @property
     def group_ids(self):
@@ -255,79 +263,6 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     @default
     def attributes_factory(self, name, parent):
         return UserAttributes(name, parent, self.record)
-
-
-ENCODING = 'utf-8'
-
-
-class AuthenticationBehavior(Behavior):
-    """
-    handles password authentication for ugm
-    contract:
-    - the plumbed class implements the IUsers interface
-    - the plumbed class implements get_hashed_pw(id: str) and set_hashed_pw(id: str, hpw: str)
-    """
-    salt_len = default(8)
-    hash_func = default(hashlib.sha256)
-
-    def on_authenticated(self, id, **kw):
-        """can be overriden to do after-authentication stuff"""
-
-    @override
-    def authenticate(self, id=None, pw=None):
-        # cannot authenticate user with unset password
-        if id not in self:
-            return False
-
-        hpw = self.get_hashed_pw(id)
-        if hpw:
-            authenticated = self._chk_pw(pw, hpw)
-            if authenticated:
-                self.on_authenticated(id)
-
-            return authenticated
-        else:
-            return False
-
-    @override
-    def passwd(self, id, oldpw, newpw):
-        if id not in self:
-            raise ValueError(u"User with id '{}' does not exist.".format(id))
-        if oldpw is not None:
-            if not self._chk_pw(oldpw, self.get_hashed_pw(id)):
-                raise ValueError('Old password does not match.')
-
-        hpw = self.hash_passwd(newpw)
-        self.set_hashed_pw(id, hpw)
-        self()
-
-    @default
-    def hash_passwd(self, newpw):
-        salt = os.urandom(self.salt_len)
-        newpw = newpw.encode(ENCODING) \
-            if isinstance(newpw, UNICODE_TYPE) \
-            else newpw
-        hashed = base64.b64encode(self.hash_func(newpw + salt).digest() + salt)
-        return hashed.decode()
-
-    @default
-    def _chk_pw(self, plain, hashed):
-        hashed = base64.b64decode(hashed)
-        salt = hashed[-self.salt_len:]
-        plain = plain.encode(ENCODING) \
-            if isinstance(plain, UNICODE_TYPE) \
-            else plain
-        return hashed == self.hash_func(plain + salt).digest() + salt
-
-    @default
-    def get_hashed_pw(self, id):
-        """must be implemented by plumbed class"""
-        raise NotImplementedError("get_hashed_pw(id: str) -> str must be implemented")
-
-    @default
-    def set_hashed_pw(self, id, hpw):
-        """must be implemented by plumbed class"""
-        raise NotImplementedError("set_hashed_pw(id: str, hpw: str) must be implemented")
 
 
 @plumbing(
@@ -394,6 +329,7 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     def attributes_factory(self, name, parent):
         return GroupAttributeFactory(name, parent, self.record)
 
+
 @plumbing(
     GroupBehavior,
     Nodespaces,
@@ -415,7 +351,7 @@ class PrincipalsBehavior(Behavior):
     @override
     def search(self, criteria=None, attrlist=None,
                exact_match=False, or_search=False):
-        typemap={
+        typemap = {
             str: String,
             int: Integer
 
@@ -518,6 +454,76 @@ class PrincipalsBehavior(Behavior):
         """
 
 
+class AuthenticationBehavior(Behavior):
+    """
+    handles password authentication for ugm
+    contract:
+    - the plumbed class implements the IUsers interface
+    - the plumbed class implements get_hashed_pw(id: str) and set_hashed_pw(id: str, hpw: str)
+    """
+    salt_len = default(8)
+    hash_func = default(hashlib.sha256)
+
+    def on_authenticated(self, id, **kw):
+        """can be overriden to do after-authentication stuff"""
+
+    @override
+    def authenticate(self, id=None, pw=None):
+        # cannot authenticate user with unset password
+        if id not in self:
+            return False
+
+        hpw = self.get_hashed_pw(id)
+        if hpw:
+            authenticated = self._chk_pw(pw, hpw)
+            if authenticated:
+                self.on_authenticated(id)
+
+            return authenticated
+        else:
+            return False
+
+    @override
+    def passwd(self, id, oldpw, newpw):
+        if id not in self:
+            raise ValueError(u"User with id '{}' does not exist.".format(id))
+        if oldpw is not None:
+            if not self._chk_pw(oldpw, self.get_hashed_pw(id)):
+                raise ValueError('Old password does not match.')
+
+        hpw = self.hash_passwd(newpw)
+        self.set_hashed_pw(id, hpw)
+        self()
+
+    @default
+    def hash_passwd(self, newpw):
+        salt = os.urandom(self.salt_len)
+        newpw = newpw.encode(ENCODING) \
+            if isinstance(newpw, UNICODE_TYPE) \
+            else newpw
+        hashed = base64.b64encode(self.hash_func(newpw + salt).digest() + salt)
+        return hashed.decode()
+
+    @default
+    def _chk_pw(self, plain, hashed):
+        hashed = base64.b64decode(hashed)
+        salt = hashed[-self.salt_len:]
+        plain = plain.encode(ENCODING) \
+            if isinstance(plain, UNICODE_TYPE) \
+            else plain
+        return hashed == self.hash_func(plain + salt).digest() + salt
+
+    @default
+    def get_hashed_pw(self, id):
+        """must be implemented by plumbed class"""
+        raise NotImplementedError("get_hashed_pw(id: str) -> str must be implemented")
+
+    @default
+    def set_hashed_pw(self, id, hpw):
+        """must be implemented by plumbed class"""
+        raise NotImplementedError("set_hashed_pw(id: str, hpw: str) must be implemented")
+
+
 class UsersBehavior(PrincipalsBehavior, BaseUsers):
     record_class = default(SQLUser)
 
@@ -596,6 +602,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
 
             user.record.last_login = now
 
+
 @plumbing(
     UsersBehavior,
     AuthenticationBehavior,
@@ -610,9 +617,9 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
 class Users(object):
     pass
 
+
 class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     record_class = default(SQLGroup)
-
 
     @default
     def create(self, _id, **kw):
@@ -667,6 +674,7 @@ class UgmSettings:
     group_attr_names = []
     log_authentication = False
     """handle first_login and last_login attributes on authentication"""
+
     def __init__(self, settings=None):
         from cone.app import get_root
         self.user_attr_names = [
@@ -685,7 +693,7 @@ class UgmSettings:
         else:
             raise ValueError("only 'true' or 'false' allowed for option 'log_authentication'")
 
-        try: # try to read user_attr_names and group_attr_names from ugm.xml
+        try:  # try to read user_attr_names and group_attr_names from ugm.xml
             from cone.ugm.utils import general_settings
             model = get_root()
             try:
@@ -737,18 +745,18 @@ class UgmBehavior(BaseUgm):
     @default
     def __getitem__(self, k):
         return getattr(self, k)
-    
+
     @default
     def __iter__(self, k):
         return iter(["users", "groups"])
-    
+
     @default
     def __setitem__(self, k, v):
-        raise NotImplemented("``__setitem__`` not in cone.sql.ugm.Ugm" )
+        raise NotImplemented("``__setitem__`` not in cone.sql.ugm.Ugm")
 
-    @default 
+    @default
     def __delitem__(self, k, v):
-        raise NotImplemented("``__delitem__`` not in cone.sql.ugm.Ugm" )
+        raise NotImplemented("``__delitem__`` not in cone.sql.ugm.Ugm")
 
     @default
     def invalidate(self, key=None):
@@ -765,6 +773,7 @@ class UgmBehavior(BaseUgm):
     @property
     def user_attr_names(self):
         return self.settings.user_attr_names
+
 
 @plumbing(
     UgmBehavior,
