@@ -306,8 +306,8 @@ Additionally options:
 .. code-block:: ini
 
     ugm.log_authentication = True
-    ugm.user_attr_names = id, login, schas
-    ugm.group_attr_names = groupname, maxmembers
+    ugm.user_attr_names = id, mail, fullname
+    ugm.group_attr_names = description
 
 - ``ugm.log_authentication`` (default: False)
    if set the first login timestamp will be set during the first authentication
