@@ -252,28 +252,30 @@ Overview
 ``cone.sql.ugm`` is an implementation of the ``node.ext.ugm.interfaces`` contract, where
 principals, users and groups are stored in sql tables:
 
-                        +------------+
-                        |  Principal |
-                        |(data: JSON)|
-                        +------------+
-                              ^
-                              |
-        +-----------------------------------------+
-        |                                         |
-        |                                         |
-     +------+                                 +-------+
-     | User |                                 | Group |
-     +------+                                 +-------+
-         1                                        1
-         |                                        |
-         |                                        |
-         +-------------+            +-------------+
-                       |            |
-                       n            m
-                       |            |
-                    +-----------------+
-                    | GroupAssignment |
-                    +-----------------+
+.. code-block::
+
+                           +------------+
+                           |  Principal |
+                           |(data: JSON)|
+                           +------------+
+                                 ^
+                                 |
+            +-----------------------------------------+
+            |                                         |
+            |                                         |
+         +------+                                 +-------+
+         | User |                                 | Group |
+         +------+                                 +-------+
+             1                                        1
+             |                                        |
+             |                                        |
+             +-------------+            +-------------+
+                           |            |
+                           n            m
+                           |            |
+                        +-----------------+
+                        | GroupAssignment |
+                        +-----------------+
 
 Currently SQLite and PostgreSQL are supported and tested, other DBs must
 be evaluated concerning their JSON capabilities since users and groups
