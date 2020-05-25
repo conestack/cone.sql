@@ -290,10 +290,10 @@ Configuration
 It can be activated using the .ini file with the following minimal setup:
 
 .. code-block:: ini
-    ...
+
     ugm.backend = sql
     ugm.config = %(here)s/ugm.xml
-    ...
+
 
 where the content of ``ugm.xml`` will be preconfigured during first startup and
 can be edited later, especially configuring the custom fields for users and
@@ -313,3 +313,14 @@ Additionally options:
    if not already configured in ``ugm.xml`` these can be set in the .ini file
     using a comma-separed list of strings.
 
+cone.ugm integration
+--------------------
+
+If the above configuration is set up correctly users can be configured TTW by using
+``cone.ugm`` by simply activating it in the .ini:
+
+.. code-block:: ini
+
+    cone.plugins =
+        cone.ugm
+        cone.sql
