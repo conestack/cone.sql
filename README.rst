@@ -246,11 +246,15 @@ Contributors
 cone.sql.ugm
 ============
 
+Overview
+--------
+
 ``cone.sql.ugm`` is an implementation of the ``node.ext.ugm.interfaces`` contract, where
 principals, users and groups are stored in sql tables:
 
                         +------------+
                         |  Principal |
+                        |(data: JSON)|
                         +------------+
                               ^
                               |
@@ -270,3 +274,42 @@ principals, users and groups are stored in sql tables:
                     +-----------------+
                     | GroupAssignment |
                     +-----------------+
+
+Currently SQLite and PostgreSQL are supported and tested, other DBs must
+be evaluated concerning their JSON capabilities since users and groups
+store additional payload data in a JSON field which brings the flexibility
+to store arbitrary data as a dict in the JSON field.
+
+Users and groups can be managed with ``cone.ugm``. See documentation
+on the basic configuration of ugm.xml there.
+
+Configuration
+-------------
+
+``cone.sql.ugm`` uses the same database as it is configured in ``cone.sql``.
+It can be activated using the .ini file with the following minimal setup:
+
+.. code-block:: ini
+    ...
+    ugm.backend = sql
+    ugm.config = %(here)s/ugm.xml
+    ...
+
+where the content of ``ugm.xml`` will be preconfigured during first startup and
+can be edited later, especially configuring the custom fields for users and
+groups.
+
+Additionally options:
+
+.. code-block:: ini
+    ugm.log_authentication = True
+    ugm.user_attr_names = id, login, schas
+    ugm.group_attr_names = groupname, maxmembers
+
+- ``ugm.log_authentication`` (default: False)
+   if set the first login timestamp will be set during the first authentication
+   and last login timestamp will be updated for each successful authentication
+- ``ugm.user_attr_names`` and ``ugm.group_attr_names``:
+   if not already configured in ``ugm.xml`` these can be set in the .ini file
+    using a comma-separed list of strings.
+
