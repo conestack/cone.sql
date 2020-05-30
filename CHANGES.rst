@@ -2,7 +2,7 @@
 Changes
 =======
 
-0.2 (unreleased)
+0.2 (2020-05-30)
 ----------------
 
 - Introduce ``cone.sql.SQLSessionFactory``. Gets instanciated at application
