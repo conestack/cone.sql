@@ -1,3 +1,4 @@
+from cone import sql
 from cone.app.testing import Security
 from cone.sql import get_session
 from cone.sql import initialize_sql
@@ -78,6 +79,8 @@ class SQLLayer(Security):
         engine = create_engine('sqlite:///:memory:', echo=False)
         initialize_sql(engine)
         maker = sessionmaker(bind=engine)
+        if sql.session_factory:  # pragma no cover
+            sql.session_factory.maker = maker
         session = maker()
         setup_session(session)
         self.sql_session = session
