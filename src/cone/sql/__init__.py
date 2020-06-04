@@ -1,4 +1,5 @@
-from cone.app import main_hook
+from cone.app import main_hook, ugm_backend, get_root
+from cone.app.ugm import UGMFactory
 from sqlalchemy import engine_from_config
 from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import declarative_base
@@ -140,3 +141,42 @@ def initialize_cone_sql(config, global_config, settings):
     initialize_sql(session_factory.engine)
     use_tm = settings.get('pyramid.includes', '').find('pyramid_tm') > -1
     os.environ['CONE_SQL_USE_TM'] = '1' if use_tm else '0'
+
+
+###############################################################################
+# UGM factory
+###############################################################################
+
+@ugm_backend('sql')
+class SqlUGMFactory(UGMFactory):
+    """Custom UGM factory.
+
+    It gets registered via ``ugm_backend`` decorator by name.
+    """
+    ugm_settings = None
+
+    def __init__(self, settings):
+        """Initialize the factory.
+
+        Passed ``settings`` contains the application settings from the ini
+        file. Thus we are free to define and expect any settings we want.
+
+        On factory initialization, we simply read settings of interest from
+        ``settings`` dict and remember them.
+        """
+        from cone.sql.ugm import Ugm, UgmSettings
+
+        self.ugm_settings = UgmSettings(settings)
+
+    def __call__(self):
+        """Create the UGM instance.
+        """
+        from cone.sql.ugm import Ugm
+        res = Ugm(
+            "Ugm",
+            None,
+            self.ugm_settings
+        )
+
+        return res
+
