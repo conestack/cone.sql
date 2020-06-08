@@ -99,11 +99,11 @@ class SQLGroup(SQLPrincipal):
     )
     id = Column(String, unique=True)
     users = association_proxy(
-        'sqlgroupassignments',
+        'group_assignments',
         'users',
         creator=lambda c: SQLGroupAssignment(users=c)
     )
-    sqlgroupassignments = relationship(
+    group_assignments = relationship(
         'SQLGroupAssignment',
         backref='groups',
         primaryjoin='SQLGroupAssignment.groups_guid == SQLGroup.guid'
@@ -140,11 +140,11 @@ class SQLUser(SQLPrincipal):
     first_login = Column(DateTime, nullable=True)
     last_login = Column(DateTime, nullable=True)
     groups = association_proxy(
-        'sqlgroupassignments',
+        'group_assignments',
         'groups',
         creator=lambda c: SQLGroupAssignment(groups=c)
     )
-    sqlgroupassignments = relationship(
+    group_assignments = relationship(
         'SQLGroupAssignment',
         backref='users',
         primaryjoin='SQLGroupAssignment.users_guid == SQLUser.guid'
@@ -186,7 +186,7 @@ class PrincipalAttributes(SQLRowNodeAttributes):
         """Fields that are in the record schema without the technical fields.
         """
         tech_fields = [
-            'sqlgroupassignments', 'discriminator', 'guid',
+            'group_assignments', 'discriminator', 'guid',
             'data', 'principal_roles', 'hashed_pw'
         ]
         schema_fields = [
