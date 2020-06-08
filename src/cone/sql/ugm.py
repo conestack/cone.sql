@@ -57,8 +57,13 @@ class SQLPrincipal(Base):
     __tablename__ = 'principal'
     discriminator = Column(String)
     __mapper_args__ = {'polymorphic_on': discriminator}
-    guid = Column(GUID, default=lambda: str(uuid.uuid4()), index=True, primary_key=True)
-    data = Column(JSONB, )
+    guid = Column(
+        GUID,
+        default=lambda: str(uuid.uuid4()),
+        index=True,
+        primary_key=True
+    )
+    data = Column(JSONB)
     principal_roles = Column(JSONB, default=[])
     created = Column(DateTime, default=datetime.now)
 
@@ -70,35 +75,65 @@ class SQLPrincipal(Base):
 
 
 class SQLGroup(SQLPrincipal):
-    __mapper_args__ = {'polymorphic_identity': 'sqlgroup'}
-    guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     __tablename__ = 'group'
+    __mapper_args__ = {'polymorphic_identity': 'sqlgroup'}
+    guid = Column(
+        GUID,
+        ForeignKey('principal.guid', deferrable=True),
+        primary_key=True
+    )
     id = Column(String, unique=True)
-    users = association_proxy("sqlgroupassignments", "users",
-                              creator=lambda c: SQLGroupAssignment(users=c))
-    sqlgroupassignments = relationship('SQLGroupAssignment', backref='groups',
-                                       primaryjoin='SQLGroupAssignment.groups_guid == SQLGroup.guid')
+    users = association_proxy(
+        'sqlgroupassignments',
+        'users',
+        creator=lambda c: SQLGroupAssignment(users=c)
+    )
+    sqlgroupassignments = relationship(
+        'SQLGroupAssignment',
+        backref='groups',
+        primaryjoin='SQLGroupAssignment.groups_guid == SQLGroup.guid'
+    )
 
 
 class SQLGroupAssignment(Base):
     __tablename__ = 'group_assignment'
-    groups_guid = Column(GUID, ForeignKey('group.guid', deferrable=True), primary_key=True, nullable=False)
-    users_guid = Column(GUID, ForeignKey('user.guid', deferrable=True), primary_key=True, nullable=False)
+    groups_guid = Column(
+        GUID,
+        ForeignKey('group.guid', deferrable=True),
+        primary_key=True,
+        nullable=False
+    )
+    users_guid = Column(
+        GUID,
+        ForeignKey('user.guid', deferrable=True),
+        primary_key=True,
+        nullable=False
+    )
 
 
 class SQLUser(SQLPrincipal):
-    __mapper_args__ = {'polymorphic_identity': 'sqluser'}
-    guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     __tablename__ = 'user'
+    __mapper_args__ = {'polymorphic_identity': 'sqluser'}
+    guid = Column(
+        GUID,
+        ForeignKey('principal.guid', deferrable=True),
+        primary_key=True
+    )
     login = Column(String)
     id = Column(String, unique=True)
     hashed_pw = Column(String)
     first_login = Column(DateTime, nullable=True)
     last_login = Column(DateTime, nullable=True)
-    groups = association_proxy("sqlgroupassignments", "groups",
-                               creator=lambda c: SQLGroupAssignment(groups=c))
-    sqlgroupassignments = relationship('SQLGroupAssignment', backref='users',
-                                       primaryjoin='SQLGroupAssignment.users_guid == SQLUser.guid')
+    groups = association_proxy(
+        'sqlgroupassignments',
+        'groups',
+        creator=lambda c: SQLGroupAssignment(groups=c)
+    )
+    sqlgroupassignments = relationship(
+        'SQLGroupAssignment',
+        backref='users',
+        primaryjoin='SQLGroupAssignment.users_guid == SQLUser.guid'
+    )
 
 
 ###############################################################################
@@ -106,8 +141,8 @@ class SQLUser(SQLPrincipal):
 ###############################################################################
 
 class PrincipalAttributes(SQLRowNodeAttributes):
-    """Define field names based on the configured fields in
-    .ini file, ugm.xml and the given SQL schema
+    """Consists of field configured in .ini file or ugm.xml and the given SQL
+    schema fields.
     """
 
     @property
@@ -119,7 +154,7 @@ class PrincipalAttributes(SQLRowNodeAttributes):
             setattr(self.record, name, value)
         else:
             self.record.data[name] = value
-            flag_modified(self.record, "data")
+            flag_modified(self.record, 'data')
 
     def __getitem__(self, name):
         return self.record.get_attribute(name)
@@ -134,10 +169,11 @@ class PrincipalAttributes(SQLRowNodeAttributes):
     @property
     def schema_fields(self):
         """Fields that are in the record schema without the technical fields.
-
-        :return: List[str]
         """
-        tech_fields = ['sqlgroupassignments', 'discriminator', 'guid', 'data', 'principal_roles', 'hashed_pw']
+        tech_fields = [
+            'sqlgroupassignments', 'discriminator', 'guid',
+            'data', 'principal_roles', 'hashed_pw'
+        ]
         schema_fields = [
             f for f in
             inspect(self.record.__class__).attrs.keys()
@@ -149,11 +185,8 @@ class PrincipalAttributes(SQLRowNodeAttributes):
     def inspected_fields(self):
         """Fields that are in the record schema + keys from record.data without
         the technical fields.
-
-        :return: List[str]
         """
-        res = self.schema_fields + list(self.record.data.keys())
-        return res
+        return self.schema_fields + list(self.record.data.keys())
 
 
 class UserAttributes(PrincipalAttributes):
@@ -203,7 +236,8 @@ class PrincipalBehavior(Behavior):
     @default
     def remove_role(self, role):
         if role in self.own_roles:
-            self.own_roles = [r for r in self.own_roles if r != role]  # to trigger the json field
+            # to trigger the json field
+            self.own_roles = [r for r in self.own_roles if r != role]
 
     @property
     def own_roles(self):
@@ -270,8 +304,7 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     Attributes,
     Nodify,
     Adopt,
-    SQLSession
-)
+    SQLSession)
 class User(object):
     pass
 
@@ -301,7 +334,8 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     def __delitem__(self, key):
         # this one does not work, throws
         # AssertionError: Dependency rule tried to blank-out primary key column
-        # 'group_assignment.groups_guid' on instance '<SQLGroupAssignment at 0x10f831310>'
+        # 'group_assignment.groups_guid' on instance
+        # '<SQLGroupAssignment at 0x10f831310>'
         # self.record.users.remove(self.ugm.users[key].record)
         user = self.ugm.users[key]
         assoc = self.ugm.users.session.query(SQLGroupAssignment).filter(
@@ -314,7 +348,8 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
 
     @default
     def __iter__(self):
-        return iter(self.member_ids)  # XXX: for groups with many many members this should be implemented lazy
+        # XXX: for groups with many many members this should be implemented lazy
+        return iter(self.member_ids)
 
     @default
     @property
@@ -334,8 +369,7 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     Nodespaces,
     Attributes,
     Nodify,
-    SQLSession
-)
+    SQLSession)
 class Group(object):
     pass
 
@@ -353,16 +387,15 @@ class PrincipalsBehavior(Behavior):
         typemap = {
             str: String,
             int: Integer
-
         }
         if criteria is None:
             criteria = {}
         op = or_ if or_search else and_
         cls = self.record_class
-        fixed_fields = ["id", "login"]
+        fixed_fields = ['id', 'login']
         fixed_field_comparators = [
             getattr(cls, key) == criteria[key] if exact_match
-            else getattr(cls, key).like(("%s" % criteria[key]).replace("*", "%%"))
+            else getattr(cls, key).like(('%s' % criteria[key]).replace('*', '%%'))
             for key in fixed_fields
             if key in criteria
         ]
@@ -374,7 +407,7 @@ class PrincipalsBehavior(Behavior):
             if exact_match:
                 return lit
             else:
-                return lit.replace("*", "%%") if isinstance(lit, str) else lit
+                return lit.replace('*', '%%') if isinstance(lit, str) else lit
 
         def field_selector(key, value):
             return cls.data[key].cast(String).cast(typemap[type(value)])
@@ -408,36 +441,29 @@ class PrincipalsBehavior(Behavior):
         if attrlist is not None:
             if attrlist:
                 res = [
-                    (
-                        p.id,
-                        {k: p.get_attribute(k) for k in attrlist}
-                    )
+                    (p.id, {k: p.get_attribute(k) for k in attrlist})
                     for p in query.all()
                 ]
-            else:  # empty attrlist, so we take all attributes
+            # empty attrlist, so we take all attributes
+            else:
                 def merged_attrs(p):
                     # merge fixed attributes and dynamic attributes from ``data``
                     attrs = {k: p.get_attribute(k) for k in fixed_fields if k != 'id'}
                     attrs.update(p.data)
                     return attrs
-                res = [
-                    (
-                        p.id,
-                        merged_attrs(p)
-                    )
-                    for p in query.all()
-                ]
+
+                res = [(p.id, merged_attrs(p)) for p in query.all()]
             res
         else:
             res = [p.id for p in query.all()]
 
         if exact_match and not res:
-            raise ValueError("no entries found")
+            raise ValueError('no entries found')
         return res
 
     @default
     def create(self, _id, **kw):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @default
     def __call__(self):
@@ -457,7 +483,8 @@ class AuthenticationBehavior(Behavior):
     """Handles password authentication for ugm contract:
 
     - the plumbed class implements the IUsers interface
-    - the plumbed class implements get_hashed_pw(id: str) and set_hashed_pw(id: str, hpw: str)
+    - the plumbed class implements get_hashed_pw(id: str) and
+      set_hashed_pw(id: str, hpw: str)
     """
     salt_len = default(8)
     hash_func = default(hashlib.sha256)
@@ -468,7 +495,7 @@ class AuthenticationBehavior(Behavior):
 
     @override
     def authenticate(self, id=None, pw=None):
-        # cannot authenticate user with unset password
+        # cannot authenticate user with unset password.
         if id not in self:
             return False
 
@@ -489,7 +516,6 @@ class AuthenticationBehavior(Behavior):
         if oldpw is not None:
             if not self._chk_pw(oldpw, self.get_hashed_pw(id)):
                 raise ValueError('Old password does not match.')
-
         hpw = self.hash_passwd(newpw)
         self.set_hashed_pw(id, hpw)
         self()
@@ -514,11 +540,13 @@ class AuthenticationBehavior(Behavior):
 
     @default
     def get_hashed_pw(self, id):
-        raise NotImplementedError("get_hashed_pw(id: str) -> str must be implemented")
+        msg = 'get_hashed_pw(id: str) -> str must be implemented'
+        raise NotImplementedError(msg)
 
     @default
     def set_hashed_pw(self, id, hpw):
-        raise NotImplementedError("set_hashed_pw(id: str, hpw: str) must be implemented")
+        msg = 'set_hashed_pw(id: str, hpw: str) must be implemented'
+        raise NotImplementedError(msg)
 
 
 class UsersBehavior(PrincipalsBehavior, BaseUsers):
@@ -527,11 +555,15 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     @default
     def id_for_login(self, login):
         try:
-            searchterm = '"%s"' % login  # JSON field works so that the searchterm has to be enclosed in doublequotes
+            # JSON field works so that the searchterm has to be enclosed in
+            # doublequotes
+            searchterm = '"%s"' % login
             if self.session.bind.dialect.name == 'sqlite':
-                # if the key to the json field is variable we need a special treatment for sqlite
+                # if the key to the json field is variable we need a special
+                # treatment for sqlite
+                field_name = ('$.' + SQLUser.login).cast(String)
                 res = self.session.query(SQLUser).filter(
-                    SQLUser.data[("$." + SQLUser.login).cast(String)].cast(String) == searchterm
+                    SQLUser.data[field_name].cast(String) == searchterm
                 ).one()
             else:
                 res = self.session.query(SQLUser).filter(
@@ -565,11 +597,12 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
 
     @default
     def __setitem__(self, key, value):
-        raise NotImplementedError("users can only be added using the create() method")
+        msg = 'users can only be added using the create() method'
+        raise NotImplementedError(msg)
 
     @default
     def create(self, _id, **kw):
-        login = kw.pop("login", None)
+        login = kw.pop('login', None)
         sqluser = SQLUser(id=_id, login=login, data=kw)
         self.session.add(sqluser)
         self.session.flush()
@@ -596,7 +629,6 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
             now = datetime.now()
             if user.record.first_login is None:
                 user.record.first_login = now
-
             user.record.last_login = now
 
 
@@ -609,8 +641,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     Attributes,
     Nodify,
     SQLSession,
-    DefaultInit
-)
+    DefaultInit)
 class Users(object):
     pass
 
@@ -624,12 +655,14 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
         self.session.add(sqlgroup)
         self.session.flush()
         return self[_id]
-        # return Group(sqlgroup, self.ugm)  # when doing it so, I get weird join errors
 
     @default
     def __getitem__(self, id, default=None):
         try:
-            sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
+            sqlgroup = self.session\
+                .query(SQLGroup)\
+                .filter(SQLGroup.id == id)\
+                .one()
         except NoResultFound:
             raise KeyError(id)
         return Group(self, sqlgroup)
@@ -637,7 +670,10 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     @default
     def __delitem__(self, id):
         try:
-            sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
+            sqlgroup = self.session\
+                .query(SQLGroup)\
+                .filter(SQLGroup.id == id)\
+                .one()
             self.session.delete(sqlgroup)
         except NoResultFound:
             raise KeyError(id)
@@ -649,7 +685,8 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
 
     @default
     def __setitem__(self, key, value):
-        raise NotImplementedError("groups can only be added using the create() method")
+        msg = 'groups can only be added using the create() method'
+        raise NotImplementedError(msg)
 
 
 @plumbing(
@@ -660,37 +697,35 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     Attributes,
     Nodify,
     SQLSession,
-    DefaultInit
-)
+    DefaultInit)
 class Groups(object):
     pass
 
 
-class UgmSettings:
+class UgmSettings(object):
     user_attr_names = []
     group_attr_names = []
     log_authentication = False
-    """handle first_login and last_login attributes on authentication"""
 
     def __init__(self, settings=None):
         from cone.app import get_root
         self.user_attr_names = [
             att.strip() for att in
-            settings.get("ugm.user_attr_names", "").split(",")
+            settings.get('ugm.user_attr_names', '').split(',')
             if att
         ]
         self.group_attr_names = [
             att.strip() for att in
-            settings.get("ugm.group_attr_names", "").split(",")
+            settings.get('ugm.group_attr_names', '').split(',')
             if att
         ]
-        log_authentication = settings.get("ugm.log_authentication", "false").lower()
-        if log_authentication in ("true", "false"):
-            self.log_authentication = True if log_authentication == "true" else False
+        log_authentication = settings.get('ugm.log_authentication', 'false').lower()
+        if log_authentication in ('true', 'false'):
+            self.log_authentication = True if log_authentication == 'true' else False
         else:
             raise ValueError("only 'true' or 'false' allowed for option 'log_authentication'")
-
-        try:  # try to read user_attr_names and group_attr_names from ugm.xml
+        # try to read user_attr_names and group_attr_names from ugm.xml
+        try:
             from cone.ugm.utils import general_settings
             model = get_root()
             try:
@@ -716,8 +751,8 @@ class UgmBehavior(BaseUgm):
     def __init__(self, name, parent, ugm_settings):
         self.__name__ = name
         self.__parent__ = parent
-        self.users = Users("users", self)
-        self.groups = Groups("groups", self)
+        self.users = Users('users', self)
+        self.groups = Groups('groups', self)
         self.settings = ugm_settings if ugm_settings else UgmSettings()
 
     @default
@@ -745,15 +780,15 @@ class UgmBehavior(BaseUgm):
 
     @default
     def __iter__(self, k):
-        return iter(["users", "groups"])
+        return iter(['users', 'groups'])
 
     @default
     def __setitem__(self, k, v):
-        raise NotImplemented("``__setitem__`` not in cone.sql.ugm.Ugm")
+        raise NotImplementedError('``__setitem__`` not in cone.sql.ugm.Ugm')
 
     @default
     def __delitem__(self, k, v):
-        raise NotImplemented("``__delitem__`` not in cone.sql.ugm.Ugm")
+        raise NotImplementedError('``__delitem__`` not in cone.sql.ugm.Ugm')
 
     @default
     def invalidate(self, key=None):
@@ -775,7 +810,6 @@ class UgmBehavior(BaseUgm):
 @plumbing(
     UgmBehavior,
     Nodify,
-    SQLSession,
-)
+    SQLSession)
 class Ugm(object):
     pass
