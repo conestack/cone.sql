@@ -125,6 +125,7 @@ class TestSqlUgm(NodeTestCase):
             parent=None,
             user_attrs=['phone', 'address'],
             group_attrs=['description'],
+            binary_attrs=[],
             log_auth=True
         )
         users = ugm.users
@@ -458,8 +459,8 @@ class TestBrowserGroups(test_browser_groups.TestBrowserGroups):
     layer = testing.sql_layer
 
 
-#class TestBrowserPortrait(test_browser_portrait.TestBrowserPortrait):
-#    layer = testing.sql_layer
+class TestBrowserPortrait(test_browser_portrait.TestBrowserPortrait):
+    layer = testing.sql_layer
 
 
 class TestBrowserPrincipal(test_browser_principal.TestBrowserPrincipal):

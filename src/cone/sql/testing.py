@@ -71,7 +71,8 @@ class SQLLayer(Security):
             ]),
             'ugm.backend': 'sql',
             'ugm.config': testing.ugm_config,
-            'ugm.localmanager_config': testing.localmanager_config
+            'ugm.localmanager_config': testing.localmanager_config,
+            'sql.binary_attrs': 'portrait'
         })
         ugm_backend.initialize()
 

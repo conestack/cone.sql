@@ -16,6 +16,7 @@ from node.ext.ugm import Groups as BaseGroups
 from node.ext.ugm import Ugm as BaseUgm
 from node.ext.ugm import User as BaseUser
 from node.ext.ugm import Users as BaseUsers
+from node.utils import UNSET
 from operator import or_
 from plumber import Behavior
 from plumber import default
@@ -82,11 +83,11 @@ class SQLPrincipal(Base):
     principal_roles = Column(JSONB, default=[])
     created = Column(DateTime, default=datetime.now)
 
-    def get_attribute(self, key, default=None):
+    def get_attribute(self, key):
         try:
             return getattr(self, key)
         except AttributeError:
-            return self.data.get(key, default)
+            return self.data.get(key)
 
 
 class SQLGroup(SQLPrincipal):
@@ -167,56 +168,67 @@ class PrincipalAttributes(SQLRowNodeAttributes):
         return self.parent.ugm
 
     def __setitem__(self, name, value):
-        if name in self.schema_fields:
+        if value is UNSET:
+            value = ''
+        if value and name in self.binary_attrs:
+            value = base64.b64encode(value).decode()
+        if name in self.schema_attrs:
             setattr(self.record, name, value)
         else:
             self.record.data[name] = value
             flag_modified(self.record, 'data')
 
     def __getitem__(self, name):
-        return self.record.get_attribute(name)
+        value = self.record.get_attribute(name)
+        if value and name in self.binary_attrs:
+            value = base64.b64decode(value)
+        return value
 
     @property
     def _columns(self):
-        if self.configured_fields:
-            return self.configured_fields
+        if self.configured_attrs:
+            return self.configured_attrs
         else:
-            return self.inspected_fields
+            return self.inspected_attrs
 
     @property
-    def schema_fields(self):
+    def schema_attrs(self):
         """Fields that are in the record schema without the technical fields.
         """
-        tech_fields = [
+        tech_attrs = [
             'group_assignments', 'discriminator', 'guid',
             'data', 'principal_roles', 'password'
         ]
-        schema_fields = [
+        schema_attrs = [
             f for f in
             inspect(self.record.__class__).attrs.keys()
-            if f not in tech_fields
+            if f not in tech_attrs
         ]
-        return schema_fields
+        return schema_attrs
 
     @property
-    def inspected_fields(self):
+    def inspected_attrs(self):
         """Fields that are in the record schema + keys from record.data without
         the technical fields.
         """
-        return self.schema_fields + list(self.record.data.keys())
+        return self.schema_attrs + list(self.record.data.keys())
+
+    @property
+    def binary_attrs(self):
+        return self.ugm.binary_attrs
 
 
 class UserAttributes(PrincipalAttributes):
 
     @property
-    def configured_fields(self):
+    def configured_attrs(self):
         return self.ugm.user_attrs
 
 
 class GroupAttributeFactory(PrincipalAttributes):
 
     @property
-    def configured_fields(self):
+    def configured_attrs(self):
         return self.ugm.group_attrs
 
 
@@ -407,16 +419,17 @@ class PrincipalsBehavior(Behavior):
         }
         if criteria is None:
             criteria = {}
+
         op = or_ if or_search else and_
         cls = self.record_class
-        fixed_fields = ['id', 'login']
-        fixed_field_comparators = [
+        fixed_attrs = ['id', 'login']
+        fixed_attr_comparators = [
             getattr(cls, key) == criteria[key] if exact_match
             else getattr(cls, key).like(('%s' % criteria[key]).replace('*', '%%'))
-            for key in fixed_fields
+            for key in fixed_attrs
             if key in criteria
         ]
-        for key in fixed_fields:
+        for key in fixed_attrs:
             criteria.pop(key, None)
 
         def literal(value):
@@ -440,7 +453,7 @@ class PrincipalsBehavior(Behavior):
             for (key, value) in criteria.items()
         ]
 
-        comparators = fixed_field_comparators + dynamic_comparators
+        comparators = fixed_attr_comparators + dynamic_comparators
         if len(comparators) >= 2:
             clause = op(*comparators)
         elif len(comparators) == 1:
@@ -454,19 +467,27 @@ class PrincipalsBehavior(Behavior):
         else:
             query = basequery
 
+        binary_attrs = self.ugm.binary_attrs
+
+        def get_attribute(p, k):
+            value = p.get_attribute(k)
+            if value and k in binary_attrs:
+                value = base64.b64decode(value)
+            return value
+
         # XXX: should we be lazy here and yield?, would be nice for looong lists
         if attrlist is not None:
             if attrlist:
                 res = [
-                    (p.id, {k: p.get_attribute(k) for k in attrlist})
+                    (p.id, {k: get_attribute(p, k) for k in attrlist})
                     for p in query.all()
                 ]
             # empty attrlist, so we take all attributes
             else:
                 def merged_attrs(p):
                     # merge fixed attributes and dynamic attributes from ``data``
-                    attrs = {k: p.get_attribute(k) for k in fixed_fields if k != 'id'}
-                    attrs.update(p.data)
+                    attrs = {k: get_attribute(p, k) for k in fixed_attrs if k != 'id'}
+                    attrs.update(**{k: get_attribute(p, k) for k in p.data})
                     return attrs
 
                 res = [(p.id, merged_attrs(p)) for p in query.all()]
@@ -726,16 +747,19 @@ class UgmBehavior(BaseUgm):
     groups = default(None)
     user_attrs = default([])
     group_attrs = default([])
+    binary_attrs = default([])
     log_auth = default(False)
 
     @override
-    def __init__(self, name, parent, user_attrs, group_attrs, log_auth):
+    def __init__(self, name, parent, user_attrs,
+                 group_attrs, binary_attrs, log_auth):
         self.__name__ = name
         self.__parent__ = parent
         self.users = Users('users', self)
         self.groups = Groups('groups', self)
         self.user_attrs = user_attrs
         self.group_attrs = group_attrs
+        self.binary_attrs = binary_attrs
         self.log_auth = log_auth
 
     @default

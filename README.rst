@@ -256,8 +256,9 @@ ini config file.:
 
     ugm.backend = sql
 
-    sql.user_attrs = id, mail, fullname
+    sql.user_attrs = id, mail, fullname, portrait
     sql.group_attrs = description
+    sql.binary_attrs = portrait
     sql.log_auth = True
 
 UGM users and groups are stored in the same database as defined at ``sql.url``
@@ -270,6 +271,10 @@ UGM dedicated config options:
 
 - ``sql.group_attrs`` is a comma separated list of strings defining the
   available group attributes stored in the group JSON data field.
+
+- ``sql.binary_attrs`` is a comma separated list of strings defining the
+  attributes which are considered binary and get stored base 64 encoded in the
+  JSON data field of users and groups.
 
 - ``sql.log_auth`` defaults to False. If set, the first login timestamp will
   be stored during the first authentication and latest login timestamp will be

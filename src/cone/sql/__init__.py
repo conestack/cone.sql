@@ -174,6 +174,11 @@ class SqlUGMFactory(UGMFactory):
                 settings.get('sql.group_attrs', '').split(',')
                 if attr.strip()
             ]
+        self.binary_attrs = [
+            attr.strip() for attr in
+            settings.get('sql.binary_attrs', '').split(',')
+            if attr.strip()
+        ]
         self.log_auth = settings.get('sql.log_auth') in ['true', 'True', '1']
 
     def __call__(self):
@@ -183,5 +188,6 @@ class SqlUGMFactory(UGMFactory):
             parent=None,
             user_attrs=self.user_attrs,
             group_attrs=self.group_attrs,
+            binary_attrs=self.binary_attrs,
             log_auth=self.log_auth
         )
