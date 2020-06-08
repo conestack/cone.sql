@@ -1,110 +1,166 @@
+from cone.sql import SQLBase as Base
+from cone.sql import use_tm
+from cone.sql.model import GUID
+from cone.sql.model import SQLRowNodeAttributes
+from cone.sql.model import SQLSession
+from cone.sql.model import UNICODE_TYPE
+from datetime import datetime
+from node.behaviors import Adopt
+from node.behaviors import Attributes
+from node.behaviors import DefaultInit
+from node.behaviors import NodeChildValidate
+from node.behaviors import Nodespaces
+from node.behaviors import Nodify
+from node.ext.ugm import Group as BaseGroup
+from node.ext.ugm import Groups as BaseGroups
+from node.ext.ugm import Ugm as BaseUgm
+from node.ext.ugm import User as BaseUser
+from node.ext.ugm import Users as BaseUsers
+from node.utils import UNSET
+from operator import or_
+from plumber import Behavior
+from plumber import default
+from plumber import override
+from plumber import plumbing
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.orm.exc import NoResultFound
 import base64
 import hashlib
 import itertools
 import os
 import uuid
-from datetime import datetime
-from operator import or_
 
-from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
-from plumber import plumbing, Behavior, default, override
-from sqlalchemy import Column, String, ForeignKey, JSON, cast, and_, Integer, DateTime, inspect
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.associationproxy import association_proxy
 
-from cone.sql.model import GUID, SQLRowNodeAttributes, SQLSession, UNICODE_TYPE
-from cone.sql import SQLBase as Base
-from cone.sql import use_tm
+###############################################################################
+# XXX: remove, register mail user field for all backends in cone.ugm
 
-from sqlalchemy.orm import relationship, Session, object_session
+from cone.ugm.browser.principal import user_field
+from cone.ugm.browser.principal import email_field_factory
 
-from node.ext.ugm import (
-    Principal as BasePrincipal,
-    User as BaseUser,
-    Group as BaseGroup,
-    Users as BaseUsers,
-    Groups as BaseGroups,
-    Principals as BasePrincipals,
-    Ugm as BaseUgm
+file_email_field_factory = user_field('mail', backend='sql')(
+    email_field_factory
 )
 
-# hack: force sqlite to alias JSONB as JSON
-# this allows to use JSONB for the sqlalchemy variant, which is much more efficient
-# when it comes to indexing and searching
-from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+# XXX: end remove
+###############################################################################
 
+
+# HACK: Force sqlite to alias JSONB as JSON. This allows to use JSONB for the
+#       sqlalchemy variant, which is much more efficient when it comes to
+#       indexing and searching.
 SQLiteTypeCompiler.visit_JSONB = SQLiteTypeCompiler.visit_JSON
 
-####################################################
-# SQLAlchemy model classes
-# currently PostgreSQL and SQLite are tested and supported
-# for integration of other databases JSON support has to be checked
-####################################################
-
-# Base = declarative_base()
-from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy.orm.exc import NoResultFound
 
 ENCODING = 'utf-8'
 
+
+###############################################################################
+# SQLAlchemy model classes
+###############################################################################
 
 class SQLPrincipal(Base):
     __tablename__ = 'principal'
     discriminator = Column(String)
     __mapper_args__ = {'polymorphic_on': discriminator}
-    guid = Column(GUID, default=lambda: str(uuid.uuid4()), index=True, primary_key=True)
-    data = Column(JSONB, )
+    guid = Column(
+        GUID,
+        default=lambda: str(uuid.uuid4()),
+        index=True,
+        primary_key=True
+    )
+    data = Column(JSONB)
     principal_roles = Column(JSONB, default=[])
     created = Column(DateTime, default=datetime.now)
 
-    def get_attribute(self, key, default=None):
+    def get_attribute(self, key):
         try:
             return getattr(self, key)
         except AttributeError:
-            return self.data.get(key, default)
+            return self.data.get(key)
 
 
 class SQLGroup(SQLPrincipal):
-    __mapper_args__ = {'polymorphic_identity': 'sqlgroup'}
-    guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     __tablename__ = 'group'
+    __mapper_args__ = {'polymorphic_identity': 'sqlgroup'}
+    guid = Column(
+        GUID,
+        ForeignKey('principal.guid', deferrable=True),
+        primary_key=True
+    )
     id = Column(String, unique=True)
-    users = association_proxy("sqlgroupassignments", "users",
-                              creator=lambda c: SQLGroupAssignment(users=c))
-    sqlgroupassignments = relationship('SQLGroupAssignment', backref='groups',
-                                       primaryjoin='SQLGroupAssignment.groups_guid == SQLGroup.guid')
+    users = association_proxy(
+        'group_assignments',
+        'users',
+        creator=lambda c: SQLGroupAssignment(users=c)
+    )
+    group_assignments = relationship(
+        'SQLGroupAssignment',
+        backref='groups',
+        primaryjoin='SQLGroupAssignment.groups_guid == SQLGroup.guid',
+        cascade='save-update, merge, delete, delete-orphan'
+    )
 
 
 class SQLGroupAssignment(Base):
     __tablename__ = 'group_assignment'
-    groups_guid = Column(GUID, ForeignKey('group.guid', deferrable=True), primary_key=True, nullable=False)
-    users_guid = Column(GUID, ForeignKey('user.guid', deferrable=True), primary_key=True, nullable=False)
+    groups_guid = Column(
+        GUID,
+        ForeignKey('group.guid', deferrable=True),
+        primary_key=True,
+        nullable=False
+    )
+    users_guid = Column(
+        GUID,
+        ForeignKey('user.guid', deferrable=True),
+        primary_key=True,
+        nullable=False
+    )
 
 
 class SQLUser(SQLPrincipal):
-    __mapper_args__ = {'polymorphic_identity': 'sqluser'}
-    guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     __tablename__ = 'user'
+    __mapper_args__ = {'polymorphic_identity': 'sqluser'}
+    guid = Column(
+        GUID,
+        ForeignKey('principal.guid', deferrable=True),
+        primary_key=True
+    )
     login = Column(String)
     id = Column(String, unique=True)
-    hashed_pw = Column(String)
+    password = Column(String)
     first_login = Column(DateTime, nullable=True)
     last_login = Column(DateTime, nullable=True)
-    groups = association_proxy("sqlgroupassignments", "groups",
-                               creator=lambda c: SQLGroupAssignment(groups=c))
-    sqlgroupassignments = relationship('SQLGroupAssignment', backref='users',
-                                       primaryjoin='SQLGroupAssignment.users_guid == SQLUser.guid')
+    groups = association_proxy(
+        'group_assignments',
+        'groups',
+        creator=lambda c: SQLGroupAssignment(groups=c)
+    )
+    group_assignments = relationship(
+        'SQLGroupAssignment',
+        backref='users',
+        primaryjoin='SQLGroupAssignment.users_guid == SQLUser.guid',
+        cascade='save-update, merge, delete, delete-orphan'
+    )
 
 
-####################################################
+###############################################################################
 # Node classes
-####################################################
-
+###############################################################################
 
 class PrincipalAttributes(SQLRowNodeAttributes):
-    """
-    define field names based on the configured fields in
-    .ini file, ugm.xml and the given SQL schema
+    """Consists of field configured in .ini file or ugm.xml and the given SQL
+    schema fields.
     """
 
     @property
@@ -112,64 +168,74 @@ class PrincipalAttributes(SQLRowNodeAttributes):
         return self.parent.ugm
 
     def __setitem__(self, name, value):
-        if name in self.schema_fields:
+        if value is UNSET:
+            value = ''
+        if value and name in self.binary_attrs:
+            value = base64.b64encode(value).decode()
+        if name in self.schema_attrs:
             setattr(self.record, name, value)
         else:
             self.record.data[name] = value
-            flag_modified(self.record, "data")
+            flag_modified(self.record, 'data')
 
     def __getitem__(self, name):
-        return self.record.get_attribute(name)
+        value = self.record.get_attribute(name)
+        if value and name in self.binary_attrs:
+            value = base64.b64decode(value)
+        return value
 
     @property
     def _columns(self):
-        if self.configured_fields:
-            return self.configured_fields
+        if self.configured_attrs:
+            return self.configured_attrs
         else:
-            return self.inspected_fields
+            return self.inspected_attrs
 
     @property
-    def schema_fields(self):
+    def schema_attrs(self):
+        """Fields that are in the record schema without the technical fields.
         """
-        fields that are in the record schema without the technical fields
-        :return: List[str]
-        """
-        tech_fields = ['sqlgroupassignments', 'discriminator', 'guid', 'data', 'principal_roles', 'hashed_pw']
-        schema_fields = [
+        tech_attrs = [
+            'group_assignments', 'discriminator', 'guid',
+            'data', 'principal_roles', 'password'
+        ]
+        schema_attrs = [
             f for f in
             inspect(self.record.__class__).attrs.keys()
-            if f not in tech_fields
+            if f not in tech_attrs
         ]
-        return schema_fields
+        return schema_attrs
 
     @property
-    def inspected_fields(self):
+    def inspected_attrs(self):
+        """Fields that are in the record schema + keys from record.data without
+        the technical fields.
         """
-        fields that are in the record schema + keys from record.data without the technical fields
-        :return: List[str]
-        """
-        res = self.schema_fields + list(self.record.data.keys())
-        return res
+        return self.schema_attrs + list(self.record.data.keys())
+
+    @property
+    def binary_attrs(self):
+        return self.ugm.binary_attrs
 
 
 class UserAttributes(PrincipalAttributes):
 
     @property
-    def configured_fields(self):
-        return self.ugm.user_attr_names
+    def configured_attrs(self):
+        return self.ugm.user_attrs
 
 
 class GroupAttributeFactory(PrincipalAttributes):
 
     @property
-    def configured_fields(self):
-        return self.ugm.group_attr_names
+    def configured_attrs(self):
+        return self.ugm.group_attrs
 
 
 class PrincipalBehavior(Behavior):
 
     record = default(None)
-    """reference to sqlalchemy record instance"""
+    """Reference to sqlalchemy record instance."""
 
     @override
     def __init__(self, parent, record):
@@ -199,7 +265,8 @@ class PrincipalBehavior(Behavior):
     @default
     def remove_role(self, role):
         if role in self.own_roles:
-            self.own_roles = [r for r in self.own_roles if r != role]  # to trigger the json field
+            # to trigger the json field
+            self.own_roles = [r for r in self.own_roles if r != role]
 
     @property
     def own_roles(self):
@@ -238,19 +305,14 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     @default
     @property
     def roles(self):
-        """
-        accumulate principal's roles + assigned groups' roles
+        """Accumulate principal's roles + assigned groups' roles.
         """
         my_roles = self.own_roles
-
         all_roles = itertools.chain(
             my_roles,
-            *[
-                g.principal_roles for g in self.record.groups
-            ]
+            *[g.principal_roles for g in self.record.groups]
         )
-
-        return set(all_roles)
+        return list(set(all_roles))
 
     @default
     def authenticate(self, pw):
@@ -271,8 +333,7 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     Attributes,
     Nodify,
     Adopt,
-    SQLSession
-)
+    SQLSession)
 class User(object):
     pass
 
@@ -301,9 +362,10 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     @default
     def __delitem__(self, key):
         # this one does not work, throws
-        # AssertionError: Dependency rule tried to blank-out primary key column 'group_assignment.groups_guid' on instance '<SQLGroupAssignment at 0x10f831310>'
+        # AssertionError: Dependency rule tried to blank-out primary key column
+        # 'group_assignment.groups_guid' on instance
+        # '<SQLGroupAssignment at 0x10f831310>'
         # self.record.users.remove(self.ugm.users[key].record)
-
         user = self.ugm.users[key]
         assoc = self.ugm.users.session.query(SQLGroupAssignment).filter(
             and_(
@@ -315,7 +377,8 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
 
     @default
     def __iter__(self):
-        return iter(self.member_ids)  # XXX: for groups with many many members this should be implemented lazy
+        # XXX: for groups with many many members this should be implemented lazy
+        return iter(self.member_ids)
 
     @default
     @property
@@ -335,8 +398,7 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     Nodespaces,
     Attributes,
     Nodify,
-    SQLSession
-)
+    SQLSession)
 class Group(object):
     pass
 
@@ -354,21 +416,20 @@ class PrincipalsBehavior(Behavior):
         typemap = {
             str: String,
             int: Integer
-
         }
         if criteria is None:
             criteria = {}
+
         op = or_ if or_search else and_
         cls = self.record_class
-        fixed_fields = ["id", "login"]
-        fixed_field_comparators = [
-            getattr(cls, key) == criteria[key] if exact_match \
-                else getattr(cls, key).like(("%s" % criteria[key]).replace("*", "%%"))
-
-            for key in fixed_fields
+        fixed_attrs = ['id', 'login']
+        fixed_attr_comparators = [
+            getattr(cls, key) == criteria[key] if exact_match
+            else getattr(cls, key).like(('%s' % criteria[key]).replace('*', '%%'))
+            for key in fixed_attrs
             if key in criteria
         ]
-        for key in fixed_fields:
+        for key in fixed_attrs:
             criteria.pop(key, None)
 
         def literal(value):
@@ -376,7 +437,7 @@ class PrincipalsBehavior(Behavior):
             if exact_match:
                 return lit
             else:
-                return lit.replace("*", "%%") if isinstance(lit, str) else lit
+                return lit.replace('*', '%%') if isinstance(lit, str) else lit
 
         def field_selector(key, value):
             return cls.data[key].cast(String).cast(typemap[type(value)])
@@ -392,7 +453,7 @@ class PrincipalsBehavior(Behavior):
             for (key, value) in criteria.items()
         ]
 
-        comparators = fixed_field_comparators + dynamic_comparators
+        comparators = fixed_attr_comparators + dynamic_comparators
         if len(comparators) >= 2:
             clause = op(*comparators)
         elif len(comparators) == 1:
@@ -406,39 +467,41 @@ class PrincipalsBehavior(Behavior):
         else:
             query = basequery
 
+        binary_attrs = self.ugm.binary_attrs
+
+        def get_attribute(p, k):
+            value = p.get_attribute(k)
+            if value and k in binary_attrs:
+                value = base64.b64decode(value)
+            return value
+
         # XXX: should we be lazy here and yield?, would be nice for looong lists
         if attrlist is not None:
             if attrlist:
                 res = [
-                    (
-                        p.id,
-                        {k: p.get_attribute(k) for k in attrlist}
-                    )
+                    (p.id, {k: get_attribute(p, k) for k in attrlist})
                     for p in query.all()
                 ]
-            else:  # empty attrlist, so we take all attributes
-                res = [
-                    (
-                        p.id,
-                        {  # merge fixed attributes and dynamic attributes from ``data``
-                            **{k: p.get_attribute(k) for k in fixed_fields if k != 'id'},
-                            **p.data
-                        }
-                    )
-                    for p in query.all()
-                ]
+            # empty attrlist, so we take all attributes
+            else:
+                def merged_attrs(p):
+                    # merge fixed attributes and dynamic attributes from ``data``
+                    attrs = {k: get_attribute(p, k) for k in fixed_attrs if k != 'id'}
+                    attrs.update(**{k: get_attribute(p, k) for k in p.data})
+                    return attrs
 
+                res = [(p.id, merged_attrs(p)) for p in query.all()]
             res
         else:
             res = [p.id for p in query.all()]
 
         if exact_match and not res:
-            raise ValueError("no entries found")
+            raise ValueError('no entries found')
         return res
 
     @default
     def create(self, _id, **kw):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @default
     def __call__(self):
@@ -447,29 +510,24 @@ class PrincipalsBehavior(Behavior):
         else:
             self.session.commit()
 
-    @default
-    def invalidate(self, key=None, *a, **kw):
-        """
-        ATM nothing to do here, when we start using caching principals we must remove them here
-        """
-
 
 class AuthenticationBehavior(Behavior):
-    """
-    handles password authentication for ugm
-    contract:
+    """Handles password authentication for ugm contract:
+
     - the plumbed class implements the IUsers interface
-    - the plumbed class implements get_hashed_pw(id: str) and set_hashed_pw(id: str, hpw: str)
+    - the plumbed class implements get_hashed_pw(id: str) and
+      set_hashed_pw(id: str, hpw: str)
     """
     salt_len = default(8)
     hash_func = default(hashlib.sha256)
 
     def on_authenticated(self, id, **kw):
-        """can be overriden to do after-authentication stuff"""
+        """Can be overriden to do after-authentication stuff.
+        """
 
     @override
     def authenticate(self, id=None, pw=None):
-        # cannot authenticate user with unset password
+        # cannot authenticate user with unset password.
         if id not in self:
             return False
 
@@ -490,7 +548,6 @@ class AuthenticationBehavior(Behavior):
         if oldpw is not None:
             if not self._chk_pw(oldpw, self.get_hashed_pw(id)):
                 raise ValueError('Old password does not match.')
-
         hpw = self.hash_passwd(newpw)
         self.set_hashed_pw(id, hpw)
         self()
@@ -515,13 +572,13 @@ class AuthenticationBehavior(Behavior):
 
     @default
     def get_hashed_pw(self, id):
-        """must be implemented by plumbed class"""
-        raise NotImplementedError("get_hashed_pw(id: str) -> str must be implemented")
+        msg = 'get_hashed_pw(id: str) -> str must be implemented'
+        raise NotImplementedError(msg)
 
     @default
     def set_hashed_pw(self, id, hpw):
-        """must be implemented by plumbed class"""
-        raise NotImplementedError("set_hashed_pw(id: str, hpw: str) must be implemented")
+        msg = 'set_hashed_pw(id: str, hpw: str) must be implemented'
+        raise NotImplementedError(msg)
 
 
 class UsersBehavior(PrincipalsBehavior, BaseUsers):
@@ -530,11 +587,15 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     @default
     def id_for_login(self, login):
         try:
-            searchterm = '"%s"' % login  # JSON field works so that the searchterm has to be enclosed in doublequotes
+            # JSON field works so that the searchterm has to be enclosed in
+            # doublequotes
+            searchterm = '"%s"' % login
             if self.session.bind.dialect.name == 'sqlite':
-                # if the key to the json field is variable we need a special treatment for sqlite
+                # if the key to the json field is variable we need a special
+                # treatment for sqlite
+                field_name = ('$.' + SQLUser.login).cast(String)
                 res = self.session.query(SQLUser).filter(
-                    SQLUser.data[("$." + SQLUser.login).cast(String)].cast(String) == searchterm
+                    SQLUser.data[field_name].cast(String) == searchterm
                 ).one()
             else:
                 res = self.session.query(SQLUser).filter(
@@ -549,7 +610,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     def __getitem__(self, id, default=None):
         try:
             sqluser = self.session.query(SQLUser).filter(SQLUser.id == id).one()
-        except NoResultFound as ex:
+        except NoResultFound:
             raise KeyError(id)
         return User(self, sqluser)
 
@@ -558,21 +619,22 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
         try:
             sqluser = self.session.query(SQLUser).filter(SQLUser.id == id).one()
             self.session.delete(sqluser)
-        except NoResultFound as ex:
+        except NoResultFound:
             raise KeyError(id)
 
     @default
     def __iter__(self):
         users = self.session.query(SQLUser)
-        return map(lambda u: u.id, users)
+        return iter(map(lambda u: u.id, users))
 
     @default
     def __setitem__(self, key, value):
-        raise NotImplementedError("users can only be added using the create() method")
+        msg = 'users can only be added using the create() method'
+        raise NotImplementedError(msg)
 
     @default
     def create(self, _id, **kw):
-        login = kw.pop("login", None)
+        login = kw.pop('login', None)
         sqluser = SQLUser(id=_id, login=login, data=kw)
         self.session.add(sqluser)
         self.session.flush()
@@ -581,12 +643,12 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     @default
     def get_hashed_pw(self, id):
         user = self[id]
-        return user.record.hashed_pw
+        return user.record.password
 
     @default
     def set_hashed_pw(self, id, hpw):
         user = self[id]
-        user.record.hashed_pw = hpw
+        user.record.password = hpw
 
     @default
     def passwd(self, id, old, new):
@@ -594,13 +656,16 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
 
     @default
     def on_authenticated(self, id, **kw):
-        if self.ugm.settings.log_authentication:
+        if self.ugm.log_auth:
             user = self[id]
             now = datetime.now()
             if user.record.first_login is None:
                 user.record.first_login = now
-
             user.record.last_login = now
+
+    @default
+    def invalidate(self, key=None, *a, **kw):
+        self.parent.invalidate(key='users')
 
 
 @plumbing(
@@ -612,8 +677,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     Attributes,
     Nodify,
     SQLSession,
-    DefaultInit
-)
+    DefaultInit)
 class Users(object):
     pass
 
@@ -627,32 +691,42 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
         self.session.add(sqlgroup)
         self.session.flush()
         return self[_id]
-        # return Group(sqlgroup, self.ugm)  # when doing it so, I get weird join errors
 
     @default
     def __getitem__(self, id, default=None):
         try:
-            sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
-        except NoResultFound as ex:
+            sqlgroup = self.session\
+                .query(SQLGroup)\
+                .filter(SQLGroup.id == id)\
+                .one()
+        except NoResultFound:
             raise KeyError(id)
         return Group(self, sqlgroup)
 
     @default
     def __delitem__(self, id):
         try:
-            sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
+            sqlgroup = self.session\
+                .query(SQLGroup)\
+                .filter(SQLGroup.id == id)\
+                .one()
             self.session.delete(sqlgroup)
-        except NoResultFound as ex:
+        except NoResultFound:
             raise KeyError(id)
 
     @default
     def __iter__(self):
         groups = self.session.query(SQLGroup)
-        return map(lambda u: u.id, groups)
+        return iter(map(lambda u: u.id, groups))
 
     @default
     def __setitem__(self, key, value):
-        raise NotImplementedError("groups can only be added using the create() method")
+        msg = 'groups can only be added using the create() method'
+        raise NotImplementedError(msg)
+
+    @default
+    def invalidate(self, key=None, *a, **kw):
+        self.parent.invalidate(key='groups')
 
 
 @plumbing(
@@ -663,65 +737,30 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     Attributes,
     Nodify,
     SQLSession,
-    DefaultInit
-)
+    DefaultInit)
 class Groups(object):
     pass
 
 
-class UgmSettings:
-    user_attr_names = []
-    group_attr_names = []
-    log_authentication = False
-    """handle first_login and last_login attributes on authentication"""
-
-    def __init__(self, settings=None):
-        from cone.app import get_root
-        self.user_attr_names = [
-            att.strip() for att in
-            settings.get("ugm.user_attr_names", "").split(",")
-            if att
-        ]
-        self.group_attr_names = [
-            att.strip() for att in
-            settings.get("ugm.group_attr_names", "").split(",")
-            if att
-        ]
-        log_authentication = settings.get("ugm.log_authentication", "false").lower()
-        if log_authentication in ("true", "false"):
-            self.log_authentication = True if log_authentication == "true" else False
-        else:
-            raise ValueError("only 'true' or 'false' allowed for option 'log_authentication'")
-
-        try:  # try to read user_attr_names and group_attr_names from ugm.xml
-            from cone.ugm.utils import general_settings
-            model = get_root()
-            try:
-                ugm_config_attrs = general_settings(model).attrs
-                self.user_attr_names = ugm_config_attrs.users_form_attrmap.keys()
-                self.group_attr_names = ugm_config_attrs.groups_form_attrmap.keys()
-            except ValueError:
-                pass
-            except KeyError:
-                pass
-        except ImportError:
-            pass
-
-
 class UgmBehavior(BaseUgm):
-    users: Users = default(None)
-    groups: Groups = default(None)
-    group_attr_names = default([])
-    user_attr_names = default([])
-    settings = default(None)
+    users = default(None)
+    groups = default(None)
+    user_attrs = default([])
+    group_attrs = default([])
+    binary_attrs = default([])
+    log_auth = default(False)
 
     @override
-    def __init__(self, name, parent, ugm_settings):
+    def __init__(self, name, parent, user_attrs,
+                 group_attrs, binary_attrs, log_auth):
         self.__name__ = name
         self.__parent__ = parent
-        self.users = Users("users", self)
-        self.groups = Groups("groups", self)
-        self.settings = ugm_settings if ugm_settings else UgmSettings()
+        self.users = Users('users', self)
+        self.groups = Groups('groups', self)
+        self.user_attrs = user_attrs
+        self.group_attrs = group_attrs
+        self.binary_attrs = binary_attrs
+        self.log_auth = log_auth
 
     @default
     def __call__(self):
@@ -748,37 +787,34 @@ class UgmBehavior(BaseUgm):
 
     @default
     def __iter__(self, k):
-        return iter(["users", "groups"])
+        return iter(['users', 'groups'])
 
     @default
     def __setitem__(self, k, v):
-        raise NotImplemented("``__setitem__`` not in cone.sql.ugm.Ugm")
+        raise NotImplementedError('``__setitem__`` not in cone.sql.ugm.Ugm')
 
     @default
     def __delitem__(self, k, v):
-        raise NotImplemented("``__delitem__`` not in cone.sql.ugm.Ugm")
+        raise NotImplementedError('``__delitem__`` not in cone.sql.ugm.Ugm')
 
     @default
     def invalidate(self, key=None):
-        """
-        ATM nothing to do here, when we start using caching principals we must remove them here
-        """
-
-    @default
-    @property
-    def group_attr_names(self):
-        return self.settings.group_attr_names
-
-    @default
-    @property
-    def user_attr_names(self):
-        return self.settings.user_attr_names
+        if not key:
+            self.users = Users('users', self)
+            self.groups = Groups('groups', self)
+            return
+        if key == 'users':
+            self.users = Users('users', self)
+            return
+        if key == 'groups':
+            self.groups = Groups('groups', self)
+            return
+        raise KeyError(key)
 
 
 @plumbing(
     UgmBehavior,
     Nodify,
-    SQLSession,
-)
+    SQLSession)
 class Ugm(object):
     pass
