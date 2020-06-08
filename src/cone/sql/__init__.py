@@ -1,4 +1,6 @@
-from cone.app import main_hook, ugm_backend, get_root
+from cone.app import get_root
+from cone.app import main_hook
+from cone.app import ugm_backend
 from cone.app.ugm import UGMFactory
 from sqlalchemy import engine_from_config
 from sqlalchemy import MetaData
@@ -133,7 +135,7 @@ def initialize_cone_sql(config, global_config, settings):
     """Cone startup application initialization.
     """
     # database initialization
-    prefix = 'cone.sql.db.'
+    prefix = 'sql.'
     if settings.get('{}url'.format(prefix), None) is None:  # pragma: no cover
         return
     global session_factory
@@ -149,34 +151,37 @@ def initialize_cone_sql(config, global_config, settings):
 
 @ugm_backend('sql')
 class SqlUGMFactory(UGMFactory):
-    """Custom UGM factory.
-
-    It gets registered via ``ugm_backend`` decorator by name.
+    """UGM backend factory for SQL based UGM implementation.
     """
-    ugm_settings = None
 
     def __init__(self, settings):
-        """Initialize the factory.
-
-        Passed ``settings`` contains the application settings from the ini
-        file. Thus we are free to define and expect any settings we want.
-
-        On factory initialization, we simply read settings of interest from
-        ``settings`` dict and remember them.
-        """
-        from cone.sql.ugm import Ugm, UgmSettings
-
-        self.ugm_settings = UgmSettings(settings)
+        # cone.ugm active, users and groups attributes are read from ugm config
+        if settings.get('cone.plugins').find('cone.ugm') > -1:
+            from cone.ugm.utils import general_settings
+            model = get_root()
+            ugm_settings = general_settings(model).attrs
+            self.user_attrs = ugm_settings.users_form_attrmap.keys()
+            self.group_attrs = ugm_settings.groups_form_attrmap.keys()
+        # users and groups attributes are read from application ini file
+        else:
+            self.user_atts = [
+                attr.strip() for attr in
+                settings.get('sql.user_attrs', '').split(',')
+                if attr.strip()
+            ]
+            self.group_attrs = [
+                attr.strip() for attr in
+                settings.get('sql.group_attrs', '').split(',')
+                if attr.strip()
+            ]
+        self.log_auth = settings.get('sql.log_auth') in ['true', 'True', '1']
 
     def __call__(self):
-        """Create the UGM instance.
-        """
         from cone.sql.ugm import Ugm
-        res = Ugm(
-            "Ugm",
-            None,
-            self.ugm_settings
+        return Ugm(
+            name="sql_ugm",
+            parent=None,
+            user_attrs=self.user_attrs,
+            group_attrs=self.group_attrs,
+            log_auth=self.log_auth
         )
-
-        return res
-

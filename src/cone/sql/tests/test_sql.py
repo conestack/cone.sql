@@ -31,7 +31,7 @@ tm.commit_veto = pyramid_tm.default_commit_veto
 cone.plugins =
     cone.sql
 
-cone.sql.db.url = sqlite:///:memory:
+sql.url = sqlite:///:memory:
 
 [filter:remote_addr]
 # for use behind nginx

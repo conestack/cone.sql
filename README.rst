@@ -47,7 +47,7 @@ up the related elements to the WSGI pipeline.
     cone.plugins =
         cone.sql
 
-    cone.sql.db.url = sqlite:///%(here)s/var/sqlite/my_db.db
+    sql.url = sqlite:///%(here)s/var/sqlite/my_db.db
 
     [filter:remote_addr]
     # for use behind nginx
@@ -213,44 +213,11 @@ Using ``SQLPrincipalACL`` requires the model to implement ``node.interfaces.IUUI
             ]
 
 
-TODO
-----
+User and Group Management
+-------------------------
 
-- Support multiple primary keys.
-
-
-Test coverage
--------------
-
-Summary of the test coverage report::
-
-    Name                               Stmts   Miss  Cover
-    ------------------------------------------------------
-    src/cone/sql/__init__.py              50      0   100%
-    src/cone/sql/acl.py                   62      0   100%
-    src/cone/sql/model.py                162      0   100%
-    src/cone/sql/testing.py               36      0   100%
-    src/cone/sql/tests/__init__.py        18      0   100%
-    src/cone/sql/tests/test_acl.py        86      0   100%
-    src/cone/sql/tests/test_model.py     225      0   100%
-    src/cone/sql/tests/test_sql.py        38      0   100%
-    ------------------------------------------------------
-    TOTAL                                677      0   100%
-
-
-Contributors
-============
-
-- Robert Niederreiter (Author)
-
-cone.sql.ugm
-============
-
-Overview
---------
-
-``cone.sql.ugm`` is an implementation of the ``node.ext.ugm.interfaces`` contract, where
-principals, users and groups are stored in sql tables:
+``cone.sql.ugm`` contains an implementation of the UGM contracts defined at
+``node.ext.ugm.interfaces``, using sql as backend storage:
 
 .. code-block::
 
@@ -282,48 +249,76 @@ be evaluated concerning their JSON capabilities since users and groups
 store additional payload data in a JSON field which brings the flexibility
 to store arbitrary data as a dict in the JSON field.
 
-Users and groups can be managed with ``cone.ugm``. See documentation
-on the basic configuration of ugm.xml there.
+To activate SQL based UGM backend, it needs to be configured via the application
+ini config file.:
 
-Configuration
--------------
+.. code-block:: ini
 
-``cone.sql.ugm`` uses the same database as it is configured in ``cone.sql``.
-It can be activated using the .ini file with the following minimal setup:
+    ugm.backend = sql
+
+    sql.user_attrs = id, mail, fullname
+    sql.group_attrs = description
+    sql.log_auth = True
+
+UGM users and groups are stored in the same database as defined at ``sql.url``
+in the config file.
+
+UGM dedicated config options:
+
+- ``sql.user_attrs`` is a comma separated list of strings defining the
+  available user attributes stored in the user JSON data field.
+
+- ``sql.group_attrs`` is a comma separated list of strings defining the
+  available group attributes stored in the group JSON data field.
+
+- ``sql.log_auth`` defaults to False. If set, the first login timestamp will
+  be stored during the first authentication and latest login timestamp will be
+  updated for each successful authentication.
+
+Users and groups can be managed with ``cone.ugm``. If activated,
+``sql.user_attrs`` and ``sql.group_attrs`` can be omitted, relevant information
+gets extracted from the ``ugm.xml`` config file.
 
 .. code-block:: ini
 
     ugm.backend = sql
     ugm.config = %(here)s/ugm.xml
 
-
-where the content of ``ugm.xml`` will be preconfigured during first startup and
-can be edited later, especially configuring the custom fields for users and
-groups.
-
-Additionally options:
-
-.. code-block:: ini
-
-    ugm.log_authentication = True
-    ugm.user_attr_names = id, mail, fullname
-    ugm.group_attr_names = description
-
-- ``ugm.log_authentication`` (default: False)
-   if set the first login timestamp will be set during the first authentication
-   and last login timestamp will be updated for each successful authentication
-- ``ugm.user_attr_names`` and ``ugm.group_attr_names``:
-   if not already configured in ``ugm.xml`` these can be set in the .ini file
-   using a comma-separed list of strings.
-
-cone.ugm integration
---------------------
-
-If the above configuration is set up correctly users can be configured TTW by using
-``cone.ugm`` by simply activating it in the .ini:
-
-.. code-block:: ini
+    sql.log_auth = True
 
     cone.plugins =
         cone.ugm
         cone.sql
+
+
+TODO
+----
+
+- Support multiple primary keys.
+
+
+Test coverage
+-------------
+
+Summary of the test coverage report::
+
+    Name                               Stmts   Miss  Cover
+    ------------------------------------------------------
+    src/cone/sql/__init__.py              50      0   100%
+    src/cone/sql/acl.py                   62      0   100%
+    src/cone/sql/model.py                162      0   100%
+    src/cone/sql/testing.py               36      0   100%
+    src/cone/sql/tests/__init__.py        18      0   100%
+    src/cone/sql/tests/test_acl.py        86      0   100%
+    src/cone/sql/tests/test_model.py     225      0   100%
+    src/cone/sql/tests/test_sql.py        38      0   100%
+    ------------------------------------------------------
+    TOTAL                                677      0   100%
+
+
+Contributors
+============
+
+- Robert Niederreiter (Author)
+
+- Phil Auersperg

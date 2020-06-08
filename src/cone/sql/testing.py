@@ -60,6 +60,13 @@ class delete_table_records(object):
 ###############################################################################
 
 class SQLLayer(Security):
+    """
+    XXX: in make_app {
+        'sql.user_attrs': 'phone, address',
+        'sql.group_attrs': 'description',
+        'sql.log_auth': 'true'
+    }
+    """
 
     def setUp(self, args=None):
         self.tempdir = tempfile.mkdtemp()

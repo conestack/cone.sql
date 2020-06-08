@@ -193,14 +193,14 @@ class UserAttributes(PrincipalAttributes):
 
     @property
     def configured_fields(self):
-        return self.ugm.user_attr_names
+        return self.ugm.user_attrs
 
 
 class GroupAttributeFactory(PrincipalAttributes):
 
     @property
     def configured_fields(self):
-        return self.ugm.group_attr_names
+        return self.ugm.group_attrs
 
 
 class PrincipalBehavior(Behavior):
@@ -624,7 +624,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
 
     @default
     def on_authenticated(self, id, **kw):
-        if self.ugm.settings.log_authentication:
+        if self.ugm.log_auth:
             user = self[id]
             now = datetime.now()
             if user.record.first_login is None:
@@ -702,58 +702,22 @@ class Groups(object):
     pass
 
 
-class UgmSettings(object):
-    user_attr_names = []
-    group_attr_names = []
-    log_authentication = False
-
-    def __init__(self, settings=None):
-        from cone.app import get_root
-        self.user_attr_names = [
-            att.strip() for att in
-            settings.get('ugm.user_attr_names', '').split(',')
-            if att
-        ]
-        self.group_attr_names = [
-            att.strip() for att in
-            settings.get('ugm.group_attr_names', '').split(',')
-            if att
-        ]
-        log_authentication = settings.get('ugm.log_authentication', 'false').lower()
-        if log_authentication in ('true', 'false'):
-            self.log_authentication = True if log_authentication == 'true' else False
-        else:
-            raise ValueError("only 'true' or 'false' allowed for option 'log_authentication'")
-        # try to read user_attr_names and group_attr_names from ugm.xml
-        try:
-            from cone.ugm.utils import general_settings
-            model = get_root()
-            try:
-                ugm_config_attrs = general_settings(model).attrs
-                self.user_attr_names = ugm_config_attrs.users_form_attrmap.keys()
-                self.group_attr_names = ugm_config_attrs.groups_form_attrmap.keys()
-            except ValueError:
-                pass
-            except KeyError:
-                pass
-        except ImportError:
-            pass
-
-
 class UgmBehavior(BaseUgm):
     users = default(None)
     groups = default(None)
-    group_attr_names = default([])
-    user_attr_names = default([])
-    settings = default(None)
+    user_attrs = default([])
+    group_attrs = default([])
+    log_auth = default(False)
 
     @override
-    def __init__(self, name, parent, ugm_settings):
+    def __init__(self, name, parent, user_attrs, group_attrs, log_auth):
         self.__name__ = name
         self.__parent__ = parent
         self.users = Users('users', self)
         self.groups = Groups('groups', self)
-        self.settings = ugm_settings if ugm_settings else UgmSettings()
+        self.user_attrs = user_attrs
+        self.group_attrs = group_attrs
+        self.log_auth = log_auth
 
     @default
     def __call__(self):
@@ -795,16 +759,6 @@ class UgmBehavior(BaseUgm):
         """ATM nothing to do here, when we start using caching principals we
         must remove them here.
         """
-
-    @default
-    @property
-    def group_attr_names(self):
-        return self.settings.group_attr_names
-
-    @default
-    @property
-    def user_attr_names(self):
-        return self.settings.user_attr_names
 
 
 @plumbing(

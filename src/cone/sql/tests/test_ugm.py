@@ -4,7 +4,6 @@ from cone.sql.ugm import Group
 from cone.sql.ugm import SQLGroup
 from cone.sql.ugm import SQLUser
 from cone.sql.ugm import Ugm
-from cone.sql.ugm import UgmSettings
 from cone.sql.ugm import User
 from node.tests import NodeTestCase
 from sqlalchemy.engine import create_engine
@@ -93,13 +92,13 @@ class TestSqlUgm(NodeTestCase):
         os.environ['CONE_SQL_USE_TM'] = '0'
         self.layer.new_request()
 
-        # setup ugm
-        settings = UgmSettings({
-            'ugm.user_attr_names': 'phone, address',
-            'ugm.group_attr_names': 'description',
-            'ugm.log_authentication': 'true'
-        })
-        ugm = Ugm('Ugm', None, settings)
+        ugm = Ugm(
+            name='sql_ugm',
+            parent=None,
+            user_attrs=['phone', 'address'],
+            group_attrs=['description'],
+            log_auth=True
+        )
         users = ugm.users
         groups = ugm.groups
 
