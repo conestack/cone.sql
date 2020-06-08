@@ -5,6 +5,13 @@ Changes
 0.3 (unreleased)
 ----------------
 
+- SQL database URL setting key in ini file changed from ``cone.sql.db.url``
+  to ``sql.url``.
+  [rnix]
+
+- Add SQL based UGM implementation.
+  [zworkb, rnix]
+
 - Patch ``maker`` on ``cone.sql.session_factory`` if present in
   ``cone.sql.testing.SQLLayer`` to ensure working session factory when running
   tests.
