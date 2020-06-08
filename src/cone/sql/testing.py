@@ -1,12 +1,15 @@
 from cone import sql
 from cone.app.testing import Security
+from cone.app.ugm import ugm_backend
 from cone.sql import get_session
 from cone.sql import initialize_sql
 from cone.sql import setup_session
 from cone.sql import sql_session_setup
+from cone.ugm import testing
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.orm import sessionmaker
+import os
 import shutil
 import tempfile
 
@@ -60,6 +63,19 @@ class delete_table_records(object):
 
 class SQLLayer(Security):
 
+    def make_app(self):
+        super(SQLLayer, self).make_app(**{
+            'cone.plugins': '\n'.join([
+                'cone.sql',
+                'cone.ugm'
+            ]),
+            'ugm.backend': 'sql',
+            'ugm.config': testing.ugm_config,
+            'ugm.localmanager_config': testing.localmanager_config,
+            'sql.binary_attrs': 'portrait'
+        })
+        ugm_backend.initialize()
+
     def setUp(self, args=None):
         self.tempdir = tempfile.mkdtemp()
         super(SQLLayer, self).setUp()
@@ -70,13 +86,28 @@ class SQLLayer(Security):
         super(SQLLayer, self).tearDown()
         shutil.rmtree(self.tempdir)
 
-    def new_request(self):
-        request = super(SQLLayer, self).new_request()
+    def new_request(self, type=None, xhr=False):
+        request = super(SQLLayer, self).new_request(type=type, xhr=xhr)
         request.environ['cone.sql.session'] = self.sql_session
         return request
 
     def init_sql(self):
-        engine = create_engine('sqlite:///:memory:', echo=False)
+        sql_backend = os.environ.get('CONE_SQL_TEST_BACKEND')
+        # sqlite memory is default test backend
+        if not sql_backend:
+            engine = create_engine('sqlite:///:memory:', echo=False)
+        # sqlite persistent in package folder for post mortem analysis
+        elif sql_backend == 'sqlite':
+            curdir = os.path.dirname(__file__)
+            fname = "%s/test.db" % curdir
+            if os.path.exists(fname):
+                os.remove(fname)
+            uri = "sqlite:///" + fname
+            engine = create_engine(uri)
+        # alternatively use postgresql - ditches db before start
+        elif sql_backend == 'postgres':
+            os.system("dropdb ugm; createdb ugm")
+            engine = create_engine("postgresql:///ugm", echo=False)
         initialize_sql(engine)
         maker = sessionmaker(bind=engine)
         if sql.session_factory:  # pragma no cover

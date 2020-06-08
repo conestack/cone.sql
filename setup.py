@@ -53,8 +53,21 @@ setup(
         'pyramid_retry',
         'cone.app',
     ],
-    extras_require=dict(test=['zope.testrunner']),
-    tests_require=['zope.testrunner'],
+    extras_require=dict(
+        ugm=[
+            'cone.ugm'
+        ],
+        test=[
+            'Pillow',
+            'zope.testrunner',
+            'cone.ugm'
+        ]
+    ),
+    tests_require=[
+        'Pillow',
+        'zope.testrunner',
+        'cone.ugm'
+    ],
     cmdclass=dict(test=Test),
     entry_points="""\
     [paste.filter_app_factory]

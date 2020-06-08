@@ -47,7 +47,7 @@ up the related elements to the WSGI pipeline.
     cone.plugins =
         cone.sql
 
-    cone.sql.db.url = sqlite:///%(here)s/var/sqlite/my_db.db
+    sql.url = sqlite:///%(here)s/var/sqlite/my_db.db
 
     [filter:remote_addr]
     # for use behind nginx
@@ -213,6 +213,89 @@ Using ``SQLPrincipalACL`` requires the model to implement ``node.interfaces.IUUI
             ]
 
 
+User and Group Management
+-------------------------
+
+``cone.sql.ugm`` contains an implementation of the UGM contracts defined at
+``node.ext.ugm.interfaces``, using sql as backend storage:
+
+.. code-block::
+
+                           +------------+
+                           |  Principal |
+                           |(data: JSON)|
+                           +------------+
+                                 ^
+                                 |
+            +-----------------------------------------+
+            |                                         |
+            |                                         |
+         +------+                                 +-------+
+         | User |                                 | Group |
+         +------+                                 +-------+
+             1                                        1
+             |                                        |
+             |                                        |
+             +-------------+            +-------------+
+                           |            |
+                           n            m
+                           |            |
+                        +-----------------+
+                        | GroupAssignment |
+                        +-----------------+
+
+Currently SQLite and PostgreSQL are supported and tested, other DBs must
+be evaluated concerning their JSON capabilities since users and groups
+store additional payload data in a JSON field which brings the flexibility
+to store arbitrary data as a dict in the JSON field.
+
+To activate SQL based UGM backend, it needs to be configured via the application
+ini config file.:
+
+.. code-block:: ini
+
+    ugm.backend = sql
+
+    sql.user_attrs = id, mail, fullname, portrait
+    sql.group_attrs = description
+    sql.binary_attrs = portrait
+    sql.log_auth = True
+
+UGM users and groups are stored in the same database as defined at ``sql.url``
+in the config file.
+
+UGM dedicated config options:
+
+- ``sql.user_attrs`` is a comma separated list of strings defining the
+  available user attributes stored in the user JSON data field.
+
+- ``sql.group_attrs`` is a comma separated list of strings defining the
+  available group attributes stored in the group JSON data field.
+
+- ``sql.binary_attrs`` is a comma separated list of strings defining the
+  attributes which are considered binary and get stored base 64 encoded in the
+  JSON data field of users and groups.
+
+- ``sql.log_auth`` defaults to False. If set, the first login timestamp will
+  be stored during the first authentication and latest login timestamp will be
+  updated for each successful authentication.
+
+Users and groups can be managed with ``cone.ugm``. If activated,
+``sql.user_attrs`` and ``sql.group_attrs`` can be omitted, relevant information
+gets extracted from the ``ugm.xml`` config file.
+
+.. code-block:: ini
+
+    ugm.backend = sql
+    ugm.config = %(here)s/ugm.xml
+
+    sql.log_auth = True
+
+    cone.plugins =
+        cone.ugm
+        cone.sql
+
+
 TODO
 ----
 
@@ -242,3 +325,5 @@ Contributors
 ============
 
 - Robert Niederreiter (Author)
+
+- Phil Auersperg
