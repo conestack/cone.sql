@@ -1,5 +1,5 @@
-import os
 
+from cone import sql
 from cone.app.testing import Security
 from cone.sql import get_session
 from cone.sql import initialize_sql
@@ -8,6 +8,7 @@ from cone.sql import sql_session_setup
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.orm import sessionmaker
+import os
 import shutil
 import tempfile
 
@@ -93,6 +94,8 @@ class SQLLayer(Security):
 
         initialize_sql(engine)
         maker = sessionmaker(bind=engine)
+        if sql.session_factory:  # pragma no cover
+            sql.session_factory.maker = maker
         session = maker()
         setup_session(session)
         self.sql_session = session

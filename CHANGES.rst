@@ -2,7 +2,16 @@
 Changes
 =======
 
-0.2 (unreleased)
+0.3 (unreleased)
+----------------
+
+- Patch ``maker`` on ``cone.sql.session_factory`` if present in
+  ``cone.sql.testing.SQLLayer`` to ensure working session factory when running
+  tests.
+  [rnix]
+
+
+0.2 (2020-05-30)
 ----------------
 
 - Introduce ``cone.sql.SQLSessionFactory``. Gets instanciated at application
