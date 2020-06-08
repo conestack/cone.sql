@@ -40,6 +40,21 @@ import itertools
 import os
 import uuid
 
+
+###############################################################################
+# XXX: remove, register mail user field for all backends in cone.ugm
+
+from cone.ugm.browser.principal import user_field
+from cone.ugm.browser.principal import email_field_factory
+
+file_email_field_factory = user_field('mail', backend='sql')(
+    email_field_factory
+)
+
+# XXX: end remove
+###############################################################################
+
+
 # HACK: Force sqlite to alias JSONB as JSON. This allows to use JSONB for the
 #       sqlalchemy variant, which is much more efficient when it comes to
 #       indexing and searching.

@@ -14,6 +14,7 @@ if [ -x "$(which python)" ]; then
     ./py2/bin/pip install https://github.com/bluedynamics/yafowil/archive/master.zip
     ./py2/bin/pip install https://github.com/bluedynamics/cone.tile/archive/master.zip
     ./py2/bin/pip install https://github.com/bluedynamics/cone.app/archive/master.zip
+    ./py2/bin/pip install https://github.com/bluedynamics/cone.ugm/archive/master.zip
     ./py2/bin/pip install -e .[test]
 fi
 if [ -x "$(which python3)" ]; then
@@ -30,5 +31,6 @@ if [ -x "$(which python3)" ]; then
     ./py3/bin/pip install https://github.com/bluedynamics/yafowil/archive/master.zip
     ./py3/bin/pip install https://github.com/bluedynamics/cone.tile/archive/master.zip
     ./py3/bin/pip install https://github.com/bluedynamics/cone.app/archive/master.zip
+    ./py3/bin/pip install https://github.com/bluedynamics/cone.ugm/archive/master.zip
     ./py3/bin/pip install -e .[test]
 fi

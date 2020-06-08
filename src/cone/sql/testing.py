@@ -1,9 +1,11 @@
 from cone import sql
 from cone.app.testing import Security
+from cone.app.ugm import ugm_backend
 from cone.sql import get_session
 from cone.sql import initialize_sql
 from cone.sql import setup_session
 from cone.sql import sql_session_setup
+from cone.ugm import testing
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.orm import sessionmaker
@@ -60,13 +62,18 @@ class delete_table_records(object):
 ###############################################################################
 
 class SQLLayer(Security):
-    """
-    XXX: in make_app {
-        'sql.user_attrs': 'phone, address',
-        'sql.group_attrs': 'description',
-        'sql.log_auth': 'true'
-    }
-    """
+
+    def make_app(self):
+        super(SQLLayer, self).make_app(**{
+            'cone.plugins': '\n'.join([
+                'cone.sql',
+                'cone.ugm'
+            ]),
+            'ugm.backend': 'sql',
+            'ugm.config': testing.ugm_config,
+            'ugm.localmanager_config': testing.localmanager_config
+        })
+        ugm_backend.initialize()
 
     def setUp(self, args=None):
         self.tempdir = tempfile.mkdtemp()
