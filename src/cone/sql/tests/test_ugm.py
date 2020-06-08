@@ -1,24 +1,23 @@
-import os
-import pprint
-import unittest
-
-from node.tests import NodeTestCase
-from sqlalchemy.engine import Engine, create_engine
-from sqlalchemy.orm import Session, sessionmaker
-
-from cone.sql.ugm import SQLPrincipal as Principal, SQLUser, Base, SQLGroup, Ugm, Group, User, Groups, Users, \
-    UgmSettings
-
 from cone.sql import testing
+from cone.sql.ugm import Base
+from cone.sql.ugm import Group
+from cone.sql.ugm import SQLGroup
+from cone.sql.ugm import SQLUser
+from cone.sql.ugm import Ugm
+from cone.sql.ugm import UgmSettings
+from cone.sql.ugm import User
+from node.tests import NodeTestCase
+from sqlalchemy.engine import create_engine
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
+import os
+import unittest
 
 
 def temp_database(fn):
+    """This decorator creates an in-memory sqlite db for testing the user
+    classes.
     """
-    This decorator creates an in-memory sqlite db for testing the user classes
-
-    """
-
     def wrapper(self):
         curdir = os.path.dirname(__file__)
         fname = "%s/test.db" % curdir
@@ -35,8 +34,7 @@ def temp_database(fn):
 
 
 class UsersTestCase(unittest.TestCase):
-    """
-    test SQLAlchemu classes only
+    """Test SQLAlchemu classes only.
     """
 
     @temp_database
@@ -130,7 +128,6 @@ class TestUserNodes(NodeTestCase):
 
         # give phil a password
         users.set_hashed_pw("phil", users.hash_passwd("test123"))
-        print("hashed pwd:", users["phil"].record.hashed_pw)
 
         dd = users["donald"]
         users["donald"].passwd(None, "test123")
@@ -155,7 +152,6 @@ class TestUserNodes(NodeTestCase):
         # check __iter__
         ids1 = list(users)
         assert sorted(ids) == sorted(ids1)
-        print(ids1)
 
         # check login attribute (lets take email)
         # schlumpf and schlumpfine with 2 different login fields
@@ -172,9 +168,6 @@ class TestUserNodes(NodeTestCase):
 
         users.set_hashed_pw(schlumpfid, users.hash_passwd("schlumpf1"))
         users.set_hashed_pw(schlumpfineid, users.hash_passwd("schlumpfine1"))
-
-        print("schlumpf ID:", schlumpfid)
-        print("schlumpfine ID:", schlumpfineid)
 
         assert users.authenticate(schlumpfid, "schlumpf1")
         assert users.authenticate(schlumpfineid, "schlumpfine1")
@@ -198,14 +191,15 @@ class TestUserNodes(NodeTestCase):
         phil2 = managers["phil"]
         assert isinstance(phil2, User)
 
-        ## non group members should raise a KeyError
+        # non group members should raise a KeyError
         self.assertRaises(KeyError, lambda: managers['donald'])
 
         for id in ids:
             assert id in members.member_ids
 
         # Role management
-        ## roles for a user
+
+        # roles for a user
         users["phil"].add_role("Editor")
         users["phil"].add_role("Spam")
         assert "Editor" in users["phil"].roles
@@ -214,28 +208,27 @@ class TestUserNodes(NodeTestCase):
         users["phil"].remove_role("Spam")
         assert "Spam" not in users["phil"].roles
         users.session.commit()
-        ## removing non-existing roles is tolerated
+        # removing non-existing roles is tolerated
         users["phil"].remove_role("Spam")
 
-        ## roles for group
+        # roles for group
         groups["managers"].add_role("Manager")
         groups["members"].add_role("Member")
         assert "Manager" in groups["managers"].roles
 
-        ## cumulative roles for the user -> user has all roles by his groups
+        # cumulative roles for the user -> user has all roles by his groups
         assert "Manager" in users["phil"].roles
         assert users["phil"].roles == set(("Manager", "Editor", "Member"))
 
-        ## get group instances of a user
+        # get group instances of a user
         for g in users["phil"].groups:
             assert isinstance(g, Group)
 
-        ## group_ids shall match group instances
+        # group_ids shall match group instances
         assert set(users["phil"].group_ids) == set([g.id for g in users["phil"].groups])
 
-        ## delete a group membership
+        # delete a group membership
         del managers["phil"]
-        # users.session.flush()
         users.session.commit()  # needs commit, flush() is not sufficient
         assert users["phil"] not in managers.users  # needs refresh
         assert users["phil"] not in groups["managers"].users
@@ -243,7 +236,7 @@ class TestUserNodes(NodeTestCase):
         assert "managers" not in users["phil"].group_ids
         assert groups["managers"] not in users["phil"].groups
 
-        ## test iter
+        # test iter
         assert set(ids) == set(list(members))
 
         # ugm-level role management
@@ -261,7 +254,7 @@ class TestUserNodes(NodeTestCase):
 
         # searching
 
-        ## search by int
+        # search by int
         r1 = users.search(
             criteria=dict(
                 height=1
@@ -270,7 +263,7 @@ class TestUserNodes(NodeTestCase):
         assert len(r1) == 1
         assert r1[0] == "phil"
 
-        ## search by string
+        # search by string
         r2 = users.search(
             criteria=dict(
                 status="super1"
@@ -279,7 +272,7 @@ class TestUserNodes(NodeTestCase):
         assert len(r2) == 1
         assert r2[0] == "phil"
 
-        ## search with or
+        # search with or
         r3 = users.search(
             criteria=dict(
                 status="super1",
@@ -290,14 +283,13 @@ class TestUserNodes(NodeTestCase):
         assert len(r3) == 2
         assert set(r3) == set(("phil", "donald",))
 
-        ## search with wildcards in dynamic fields
+        # search with wildcards in dynamic fields
         r4 = users.search(
             criteria=dict(
                 status="super*",
             ),
             exact_match=False
         )
-        print(r4)
         assert len(r4) == 4
         assert set(r4) == set(("phil", "donald", "dagobert", "mickey"))
 
@@ -307,25 +299,23 @@ class TestUserNodes(NodeTestCase):
             ),
             exact_match=False
         )
-        print(r5)
         assert len(r5) == 2
         assert set(r5) == set(("donald", "dagobert"))
 
-        ## blank search should return all entries
+        # blank search should return all entries
         r6 = users.search()
         assert len(r6) == 6  # simply all of them
 
-        ## search for login field
+        # search for login field
         r7 = users.search(criteria=dict(
             login="nickname"
         ))
         assert set(r7) == {"schlumpfine"}
 
-        ## search with attrlist
+        # search with attrlist
         r8 = users.search(
             attrlist=["login", "height", "status"]
         )
-        pprint.pprint(r8)
         should_be = sorted([
             ('donald', {'height': 2, 'login': None, 'status': 'super2'}),
             ('dagobert', {'height': 3, 'login': None, 'status': 'super3'}),
@@ -339,7 +329,6 @@ class TestUserNodes(NodeTestCase):
         r9 = users.search(
             attrlist=[]
         )
-        pprint.pprint(r9)
         should_be = [
             ('donald',
              {'email': 'donald@bluedynamics.net',
@@ -365,7 +354,7 @@ class TestUserNodes(NodeTestCase):
               'status': 'super1'})
         ]
 
-        assert sorted(r9, ) == sorted(should_be)
+        self.assertEqual(sorted(r9, ), sorted(should_be))
 
         # Exact searches with empty result shall throw up
         self.assertRaises(ValueError, lambda: users.search(
@@ -392,7 +381,7 @@ class TestUserNodes(NodeTestCase):
         )
         assert list(r11) == []
 
-        ## shall work with groups too
+        # shall work with groups too
         gids = groups.search(
             criteria=dict(
                 title="Masters*"
@@ -405,13 +394,11 @@ class TestUserNodes(NodeTestCase):
         # change fields of a user
         ugm.session.commit()
 
-        print("====================================================")
         donald = users["donald"]
         donald.record.login = "mail"
         donald.record.data["mail"] = "donald@duck.com"
         flag_modified(donald.record, "data")
         ugm.session.commit()
-        print("====================================================")
         donald1 = users["donald"]
         assert donald1.record.login == "mail"
         assert donald1.record.data["mail"] == "donald@duck.com"

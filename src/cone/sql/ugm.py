@@ -1,52 +1,57 @@
+from cone.sql import SQLBase as Base
+from cone.sql import use_tm
+from cone.sql.model import GUID
+from cone.sql.model import SQLRowNodeAttributes
+from cone.sql.model import SQLSession
+from cone.sql.model import UNICODE_TYPE
+from datetime import datetime
+from node.behaviors import Adopt
+from node.behaviors import Attributes
+from node.behaviors import DefaultInit
+from node.behaviors import NodeChildValidate
+from node.behaviors import Nodespaces
+from node.behaviors import Nodify
+from node.ext.ugm import Group as BaseGroup
+from node.ext.ugm import Groups as BaseGroups
+from node.ext.ugm import Ugm as BaseUgm
+from node.ext.ugm import User as BaseUser
+from node.ext.ugm import Users as BaseUsers
+from operator import or_
+from plumber import Behavior
+from plumber import default
+from plumber import override
+from plumber import plumbing
+from sqlalchemy import and_
+from sqlalchemy import Column
+from sqlalchemy import DateTime
+from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.orm.exc import NoResultFound
 import base64
 import hashlib
 import itertools
 import os
 import uuid
-from datetime import datetime
-from operator import or_
 
-from node.behaviors import Attributes, Nodify, Adopt, Nodespaces, NodeChildValidate, DefaultInit
-from plumber import plumbing, Behavior, default, override
-from sqlalchemy import Column, String, ForeignKey, JSON, cast, and_, Integer, DateTime, inspect
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.associationproxy import association_proxy
-
-from cone.sql.model import GUID, SQLRowNodeAttributes, SQLSession, UNICODE_TYPE
-from cone.sql import SQLBase as Base
-from cone.sql import use_tm
-
-from sqlalchemy.orm import relationship, Session, object_session
-
-from node.ext.ugm import (
-    Principal as BasePrincipal,
-    User as BaseUser,
-    Group as BaseGroup,
-    Users as BaseUsers,
-    Groups as BaseGroups,
-    Principals as BasePrincipals,
-    Ugm as BaseUgm
-)
-
-# hack: force sqlite to alias JSONB as JSON
-# this allows to use JSONB for the sqlalchemy variant, which is much more efficient
-# when it comes to indexing and searching
-from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
-
+# HACK: Force sqlite to alias JSONB as JSON. This allows to use JSONB for the
+#       sqlalchemy variant, which is much more efficient when it comes to
+#       indexing and searching.
 SQLiteTypeCompiler.visit_JSONB = SQLiteTypeCompiler.visit_JSON
 
-####################################################
-# SQLAlchemy model classes
-# currently PostgreSQL and SQLite are tested and supported
-# for integration of other databases JSON support has to be checked
-####################################################
-
-# Base = declarative_base()
-from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy.orm.exc import NoResultFound
 
 ENCODING = 'utf-8'
 
+
+###############################################################################
+# SQLAlchemy model classes
+###############################################################################
 
 class SQLPrincipal(Base):
     __tablename__ = 'principal'
@@ -96,14 +101,12 @@ class SQLUser(SQLPrincipal):
                                        primaryjoin='SQLGroupAssignment.users_guid == SQLUser.guid')
 
 
-####################################################
+###############################################################################
 # Node classes
-####################################################
-
+###############################################################################
 
 class PrincipalAttributes(SQLRowNodeAttributes):
-    """
-    define field names based on the configured fields in
+    """Define field names based on the configured fields in
     .ini file, ugm.xml and the given SQL schema
     """
 
@@ -130,8 +133,8 @@ class PrincipalAttributes(SQLRowNodeAttributes):
 
     @property
     def schema_fields(self):
-        """
-        fields that are in the record schema without the technical fields
+        """Fields that are in the record schema without the technical fields.
+
         :return: List[str]
         """
         tech_fields = ['sqlgroupassignments', 'discriminator', 'guid', 'data', 'principal_roles', 'hashed_pw']
@@ -144,8 +147,9 @@ class PrincipalAttributes(SQLRowNodeAttributes):
 
     @property
     def inspected_fields(self):
-        """
-        fields that are in the record schema + keys from record.data without the technical fields
+        """Fields that are in the record schema + keys from record.data without
+        the technical fields.
+
         :return: List[str]
         """
         res = self.schema_fields + list(self.record.data.keys())
@@ -169,7 +173,7 @@ class GroupAttributeFactory(PrincipalAttributes):
 class PrincipalBehavior(Behavior):
 
     record = default(None)
-    """reference to sqlalchemy record instance"""
+    """Reference to sqlalchemy record instance."""
 
     @override
     def __init__(self, parent, record):
@@ -238,8 +242,7 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     @default
     @property
     def roles(self):
-        """
-        accumulate principal's roles + assigned groups' roles
+        """Accumulate principal's roles + assigned groups' roles.
         """
         my_roles = self.own_roles
 
@@ -301,9 +304,9 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     @default
     def __delitem__(self, key):
         # this one does not work, throws
-        # AssertionError: Dependency rule tried to blank-out primary key column 'group_assignment.groups_guid' on instance '<SQLGroupAssignment at 0x10f831310>'
+        # AssertionError: Dependency rule tried to blank-out primary key column
+        # 'group_assignment.groups_guid' on instance '<SQLGroupAssignment at 0x10f831310>'
         # self.record.users.remove(self.ugm.users[key].record)
-
         user = self.ugm.users[key]
         assoc = self.ugm.users.session.query(SQLGroupAssignment).filter(
             and_(
@@ -362,9 +365,8 @@ class PrincipalsBehavior(Behavior):
         cls = self.record_class
         fixed_fields = ["id", "login"]
         fixed_field_comparators = [
-            getattr(cls, key) == criteria[key] if exact_match \
-                else getattr(cls, key).like(("%s" % criteria[key]).replace("*", "%%"))
-
+            getattr(cls, key) == criteria[key] if exact_match
+            else getattr(cls, key).like(("%s" % criteria[key]).replace("*", "%%"))
             for key in fixed_fields
             if key in criteria
         ]
@@ -417,17 +419,18 @@ class PrincipalsBehavior(Behavior):
                     for p in query.all()
                 ]
             else:  # empty attrlist, so we take all attributes
+                def merged_attrs(p):
+                    # merge fixed attributes and dynamic attributes from ``data``
+                    attrs = {k: p.get_attribute(k) for k in fixed_fields if k != 'id'}
+                    attrs.update(p.data)
+                    return attrs
                 res = [
                     (
                         p.id,
-                        {  # merge fixed attributes and dynamic attributes from ``data``
-                            **{k: p.get_attribute(k) for k in fixed_fields if k != 'id'},
-                            **p.data
-                        }
+                        merged_attrs(p)
                     )
                     for p in query.all()
                 ]
-
             res
         else:
             res = [p.id for p in query.all()]
@@ -449,15 +452,14 @@ class PrincipalsBehavior(Behavior):
 
     @default
     def invalidate(self, key=None, *a, **kw):
-        """
-        ATM nothing to do here, when we start using caching principals we must remove them here
+        """ATM nothing to do here, when we start using caching principals we
+        must remove them here.
         """
 
 
 class AuthenticationBehavior(Behavior):
-    """
-    handles password authentication for ugm
-    contract:
+    """Handles password authentication for ugm contract:
+
     - the plumbed class implements the IUsers interface
     - the plumbed class implements get_hashed_pw(id: str) and set_hashed_pw(id: str, hpw: str)
     """
@@ -465,7 +467,8 @@ class AuthenticationBehavior(Behavior):
     hash_func = default(hashlib.sha256)
 
     def on_authenticated(self, id, **kw):
-        """can be overriden to do after-authentication stuff"""
+        """Can be overriden to do after-authentication stuff.
+        """
 
     @override
     def authenticate(self, id=None, pw=None):
@@ -515,12 +518,10 @@ class AuthenticationBehavior(Behavior):
 
     @default
     def get_hashed_pw(self, id):
-        """must be implemented by plumbed class"""
         raise NotImplementedError("get_hashed_pw(id: str) -> str must be implemented")
 
     @default
     def set_hashed_pw(self, id, hpw):
-        """must be implemented by plumbed class"""
         raise NotImplementedError("set_hashed_pw(id: str, hpw: str) must be implemented")
 
 
@@ -564,7 +565,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     @default
     def __iter__(self):
         users = self.session.query(SQLUser)
-        return map(lambda u: u.id, users)
+        return iter(map(lambda u: u.id, users))
 
     @default
     def __setitem__(self, key, value):
@@ -709,8 +710,8 @@ class UgmSettings:
 
 
 class UgmBehavior(BaseUgm):
-    users: Users = default(None)
-    groups: Groups = default(None)
+    users = default(None)
+    groups = default(None)
     group_attr_names = default([])
     user_attr_names = default([])
     settings = default(None)
@@ -760,8 +761,8 @@ class UgmBehavior(BaseUgm):
 
     @default
     def invalidate(self, key=None):
-        """
-        ATM nothing to do here, when we start using caching principals we must remove them here
+        """ATM nothing to do here, when we start using caching principals we
+        must remove them here.
         """
 
     @default

@@ -1,4 +1,3 @@
-
 from cone import sql
 from cone.app.testing import Security
 from cone.sql import get_session
@@ -78,20 +77,22 @@ class SQLLayer(Security):
         return request
 
     def init_sql(self):
-        engine = create_engine('sqlite:///:memory:', echo=False)
-
-        # alternatively use postgresql - ditches db before start
-        # os.system("dropdb ugm; createdb ugm")
-        # engine = create_engine("postgresql:///ugm", echo=False)
-
+        sql_backend = os.environ.get('CONE_SQL_TEST_BACKEND')
+        # sqlite memory is default test backend
+        if not sql_backend:
+            engine = create_engine('sqlite:///:memory:', echo=False)
         # sqlite persistent in package folder for post mortem analysis
-        # curdir = os.path.dirname(__file__)
-        # fname = "%s/test.db" % curdir
-        # if os.path.exists(fname):
-        #     os.remove(fname)
-        # uri = "sqlite:///" + fname
-        # engine = create_engine(uri)
-
+        elif sql_backend == 'sqlite':
+            curdir = os.path.dirname(__file__)
+            fname = "%s/test.db" % curdir
+            if os.path.exists(fname):
+                os.remove(fname)
+            uri = "sqlite:///" + fname
+            engine = create_engine(uri)
+        # alternatively use postgresql - ditches db before start
+        elif sql_backend == 'postgres':
+            os.system("dropdb ugm; createdb ugm")
+            engine = create_engine("postgresql:///ugm", echo=False)
         initialize_sql(engine)
         maker = sessionmaker(bind=engine)
         if sql.session_factory:  # pragma no cover
