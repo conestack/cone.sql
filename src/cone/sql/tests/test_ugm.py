@@ -147,17 +147,17 @@ class TestSqlUgm(NodeTestCase):
         self.assertFalse('zworkb' in users)
 
         # give phil a password
-        self.assertEqual(users['phil'].record.hashed_pw, None)
+        self.assertEqual(users['phil'].record.password, None)
         users.set_hashed_pw('phil', users.hash_passwd('test123'))
-        self.assertNotEqual(users['phil'].record.hashed_pw, None)
+        self.assertNotEqual(users['phil'].record.password, None)
 
-        self.assertEqual(users['donald'].record.hashed_pw, None)
+        self.assertEqual(users['donald'].record.password, None)
         users['donald'].passwd(None, 'test123')
-        self.assertNotEqual(users['donald'].record.hashed_pw, None)
+        self.assertNotEqual(users['donald'].record.password, None)
 
-        self.assertEqual(users['dagobert'].record.hashed_pw, None)
+        self.assertEqual(users['dagobert'].record.password, None)
         users.passwd('dagobert', None, 'test124')
-        self.assertNotEqual(users['dagobert'].record.hashed_pw, None)
+        self.assertNotEqual(users['dagobert'].record.password, None)
 
         self.assertFalse(users.authenticate('zworkb', 'test123'))
         self.assertTrue(users['phil'].authenticate('test123'))
@@ -426,32 +426,32 @@ class TestModelGroup(test_model_group.TestModelGroup):
     layer = testing.sql_layer
 
 
-#class TestModelGroups(test_model_groups.TestModelGroups):
-#    layer = testing.sql_layer
+class TestModelGroups(test_model_groups.TestModelGroups):
+    layer = testing.sql_layer
 
 
 class TestModelUser(test_model_user.TestModelUser):
     layer = testing.sql_layer
 
 
-#class TestModelUsers(test_model_users.TestModelUsers):
-#    layer = testing.sql_layer
+class TestModelUsers(test_model_users.TestModelUsers):
+    layer = testing.sql_layer
 
 
 class TestBrowserActions(test_browser_actions.TestBrowserActions):
     layer = testing.sql_layer
 
 
-#class TestBrowserAutoincrement(test_browser_autoincrement.TestBrowserAutoincrement):
-#    layer = testing.sql_layer
+class TestBrowserAutoincrement(test_browser_autoincrement.TestBrowserAutoincrement):
+    layer = testing.sql_layer
 
 
 class TestBrowserExpires(test_browser_expires.TestBrowserExpires):
     layer = testing.sql_layer
 
 
-#class TestBrowserGroup(test_browser_group.TestBrowserGroup):
-#    layer = testing.sql_layer
+class TestBrowserGroup(test_browser_group.TestBrowserGroup):
+    layer = testing.sql_layer
 
 
 class TestBrowserGroups(test_browser_groups.TestBrowserGroups):
@@ -482,8 +482,8 @@ class TestBrowserSettings(test_browser_settings.TestBrowserSettings):
     layer = testing.sql_layer
 
 
-#class TestBrowserUser(test_browser_user.TestBrowserUser):
-#    layer = testing.sql_layer
+class TestBrowserUser(test_browser_user.TestBrowserUser):
+    layer = testing.sql_layer
 
 
 class TestBroeserUsers(test_browser_users.TestBrowserUsers):

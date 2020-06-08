@@ -137,7 +137,7 @@ class SQLUser(SQLPrincipal):
     )
     login = Column(String)
     id = Column(String, unique=True)
-    hashed_pw = Column(String)
+    password = Column(String)
     first_login = Column(DateTime, nullable=True)
     last_login = Column(DateTime, nullable=True)
     groups = association_proxy(
@@ -189,7 +189,7 @@ class PrincipalAttributes(SQLRowNodeAttributes):
         """
         tech_fields = [
             'group_assignments', 'discriminator', 'guid',
-            'data', 'principal_roles', 'hashed_pw'
+            'data', 'principal_roles', 'password'
         ]
         schema_fields = [
             f for f in
@@ -489,12 +489,6 @@ class PrincipalsBehavior(Behavior):
         else:
             self.session.commit()
 
-    @default
-    def invalidate(self, key=None, *a, **kw):
-        """ATM nothing to do here, when we start using caching principals we
-        must remove them here.
-        """
-
 
 class AuthenticationBehavior(Behavior):
     """Handles password authentication for ugm contract:
@@ -628,12 +622,12 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     @default
     def get_hashed_pw(self, id):
         user = self[id]
-        return user.record.hashed_pw
+        return user.record.password
 
     @default
     def set_hashed_pw(self, id, hpw):
         user = self[id]
-        user.record.hashed_pw = hpw
+        user.record.password = hpw
 
     @default
     def passwd(self, id, old, new):
@@ -647,6 +641,10 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
             if user.record.first_login is None:
                 user.record.first_login = now
             user.record.last_login = now
+
+    @default
+    def invalidate(self, key=None, *a, **kw):
+        self.parent.invalidate(key='users')
 
 
 @plumbing(
@@ -704,6 +702,10 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     def __setitem__(self, key, value):
         msg = 'groups can only be added using the create() method'
         raise NotImplementedError(msg)
+
+    @default
+    def invalidate(self, key=None, *a, **kw):
+        self.parent.invalidate(key='groups')
 
 
 @plumbing(
@@ -773,9 +775,17 @@ class UgmBehavior(BaseUgm):
 
     @default
     def invalidate(self, key=None):
-        """ATM nothing to do here, when we start using caching principals we
-        must remove them here.
-        """
+        if not key:
+            self.users = Users('users', self)
+            self.groups = Groups('groups', self)
+            return
+        if key == 'users':
+            self.users = Users('users', self)
+            return
+        if key == 'groups':
+            self.groups = Groups('groups', self)
+            return
+        raise KeyError(key)
 
 
 @plumbing(
