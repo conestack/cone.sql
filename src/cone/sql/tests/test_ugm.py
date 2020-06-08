@@ -409,7 +409,7 @@ class TestSqlUgm(NodeTestCase):
 class TestLayout(test_layout.TestLayout):
     pass
 
-"""
+
 class TestModelLocalmanager(test_localmanager.TestModelLocalmanager):
     layer = testing.sql_layer
 
@@ -426,40 +426,40 @@ class TestModelGroup(test_model_group.TestModelGroup):
     layer = testing.sql_layer
 
 
-class TestModelGroups(test_model_groups.TestModelGroups):
-    layer = testing.sql_layer
+#class TestModelGroups(test_model_groups.TestModelGroups):
+#    layer = testing.sql_layer
 
 
 class TestModelUser(test_model_user.TestModelUser):
     layer = testing.sql_layer
 
 
-class TestModelUsers(test_model_users.TestModelUsers):
-    layer = testing.sql_layer
+#class TestModelUsers(test_model_users.TestModelUsers):
+#    layer = testing.sql_layer
 
 
 class TestBrowserActions(test_browser_actions.TestBrowserActions):
     layer = testing.sql_layer
 
 
-class TestBrowserAutoincrement(test_browser_autoincrement.TestBrowserAutoincrement):
-    layer = testing.sql_layer
+#class TestBrowserAutoincrement(test_browser_autoincrement.TestBrowserAutoincrement):
+#    layer = testing.sql_layer
 
 
 class TestBrowserExpires(test_browser_expires.TestBrowserExpires):
     layer = testing.sql_layer
 
 
-class TestBrowserGroup(test_browser_group.TestBrowserGroup):
-    layer = testing.sql_layer
+#class TestBrowserGroup(test_browser_group.TestBrowserGroup):
+#    layer = testing.sql_layer
 
 
 class TestBrowserGroups(test_browser_groups.TestBrowserGroups):
     layer = testing.sql_layer
 
 
-class TestBrowserPortrait(test_browser_portrait.TestBrowserPortrait):
-    layer = testing.sql_layer
+#class TestBrowserPortrait(test_browser_portrait.TestBrowserPortrait):
+#    layer = testing.sql_layer
 
 
 class TestBrowserPrincipal(test_browser_principal.TestBrowserPrincipal):
@@ -482,8 +482,8 @@ class TestBrowserSettings(test_browser_settings.TestBrowserSettings):
     layer = testing.sql_layer
 
 
-class TestBrowserUser(test_browser_user.TestBrowserUser):
-    layer = testing.sql_layer
+#class TestBrowserUser(test_browser_user.TestBrowserUser):
+#    layer = testing.sql_layer
 
 
 class TestBroeserUsers(test_browser_users.TestBrowserUsers):
@@ -492,4 +492,3 @@ class TestBroeserUsers(test_browser_users.TestBrowserUsers):
 
 class TestBrowserUtils(test_browser_utils.TestBrowserUtils):
     layer = testing.sql_layer
-"""

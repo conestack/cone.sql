@@ -106,7 +106,8 @@ class SQLGroup(SQLPrincipal):
     group_assignments = relationship(
         'SQLGroupAssignment',
         backref='groups',
-        primaryjoin='SQLGroupAssignment.groups_guid == SQLGroup.guid'
+        primaryjoin='SQLGroupAssignment.groups_guid == SQLGroup.guid',
+        cascade='save-update, merge, delete, delete-orphan'
     )
 
 
@@ -147,7 +148,8 @@ class SQLUser(SQLPrincipal):
     group_assignments = relationship(
         'SQLGroupAssignment',
         backref='users',
-        primaryjoin='SQLGroupAssignment.users_guid == SQLUser.guid'
+        primaryjoin='SQLGroupAssignment.users_guid == SQLUser.guid',
+        cascade='save-update, merge, delete, delete-orphan'
     )
 
 
@@ -696,7 +698,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     @default
     def __iter__(self):
         groups = self.session.query(SQLGroup)
-        return map(lambda u: u.id, groups)
+        return iter(map(lambda u: u.id, groups))
 
     @default
     def __setitem__(self, key, value):

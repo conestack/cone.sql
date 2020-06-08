@@ -85,8 +85,8 @@ class SQLLayer(Security):
         super(SQLLayer, self).tearDown()
         shutil.rmtree(self.tempdir)
 
-    def new_request(self):
-        request = super(SQLLayer, self).new_request()
+    def new_request(self, type=None, xhr=False):
+        request = super(SQLLayer, self).new_request(type=type, xhr=xhr)
         request.environ['cone.sql.session'] = self.sql_session
         return request
 
