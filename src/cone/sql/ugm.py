@@ -245,15 +245,11 @@ class UserBehavior(PrincipalBehavior, BaseUser):
         """Accumulate principal's roles + assigned groups' roles.
         """
         my_roles = self.own_roles
-
         all_roles = itertools.chain(
             my_roles,
-            *[
-                g.principal_roles for g in self.record.groups
-            ]
+            *[g.principal_roles for g in self.record.groups]
         )
-
-        return set(all_roles)
+        return list(set(all_roles))
 
     @default
     def authenticate(self, pw):
