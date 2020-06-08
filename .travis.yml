@@ -22,6 +22,7 @@ install:
   - pip install https://github.com/bluedynamics/yafowil/archive/master.zip
   - pip install https://github.com/bluedynamics/cone.tile/archive/master.zip
   - pip install https://github.com/bluedynamics/cone.app/archive/master.zip
+  - pip install https://github.com/bluedynamics/cone.ugm/archive/master.zip
   - pip install -e .[test]
 
 script:
