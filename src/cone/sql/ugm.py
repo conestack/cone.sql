@@ -550,7 +550,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     def __getitem__(self, id, default=None):
         try:
             sqluser = self.session.query(SQLUser).filter(SQLUser.id == id).one()
-        except NoResultFound as ex:
+        except NoResultFound:
             raise KeyError(id)
         return User(self, sqluser)
 
@@ -559,7 +559,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
         try:
             sqluser = self.session.query(SQLUser).filter(SQLUser.id == id).one()
             self.session.delete(sqluser)
-        except NoResultFound as ex:
+        except NoResultFound:
             raise KeyError(id)
 
     @default
@@ -634,7 +634,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     def __getitem__(self, id, default=None):
         try:
             sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
-        except NoResultFound as ex:
+        except NoResultFound:
             raise KeyError(id)
         return Group(self, sqlgroup)
 
@@ -643,7 +643,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
         try:
             sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
             self.session.delete(sqlgroup)
-        except NoResultFound as ex:
+        except NoResultFound:
             raise KeyError(id)
 
     @default
