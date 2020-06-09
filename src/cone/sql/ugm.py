@@ -604,6 +604,9 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     @default
     def create(self, _id, **kw):
         login = kw.pop('login', None)
+        for name, value in kw.items():
+            if value and name in self.ugm.binary_attrs:
+                kw[name] = base64.b64encode(value).decode()
         sqluser = SQLUser(id=_id, login=login, data=kw)
         self.session.add(sqluser)
         self.session.flush()
@@ -656,6 +659,9 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
 
     @default
     def create(self, _id, **kw):
+        for name, value in kw.items():
+            if value and name in self.ugm.binary_attrs:
+                kw[name] = base64.b64encode(value).decode()
         sqlgroup = SQLGroup(id=_id, data=kw)
         self.session.add(sqlgroup)
         self.session.flush()
