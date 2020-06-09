@@ -361,19 +361,8 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
 
     @default
     def __delitem__(self, key):
-        # this one does not work, throws
-        # AssertionError: Dependency rule tried to blank-out primary key column
-        # 'group_assignment.groups_guid' on instance
-        # '<SQLGroupAssignment at 0x10f831310>'
-        # self.record.users.remove(self.ugm.users[key].record)
-        user = self.ugm.users[key]
-        assoc = self.ugm.users.session.query(SQLGroupAssignment).filter(
-            and_(
-                SQLGroupAssignment.groups_guid == self.record.guid,
-                SQLGroupAssignment.users_guid == user.record.guid
-            )
-        ).one()
-        self.ugm.users.session.delete(assoc)
+        self.record.users.remove(self.ugm.users[key].record)
+
 
     @default
     def __iter__(self):
