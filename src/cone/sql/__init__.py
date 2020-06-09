@@ -138,6 +138,10 @@ def initialize_cone_sql(config, global_config, settings):
     prefix = 'sql.db.'
     if settings.get('{}url'.format(prefix), None) is None:  # pragma: no cover
         return
+    if settings.get('ugm.backend') == 'sql':
+        # If SQL configured as UGM backend, import ugm module to ensure proper
+        # table creation at initialize_sql time.
+        import cone.sql.ugm  # noqa
     global session_factory
     session_factory = SQLSessionFactory(settings, prefix)
     initialize_sql(session_factory.engine)
