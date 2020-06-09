@@ -47,7 +47,7 @@ up the related elements to the WSGI pipeline.
     cone.plugins =
         cone.sql
 
-    sql.url = sqlite:///%(here)s/var/sqlite/my_db.db
+    sql.db.url = sqlite:///%(here)s/var/sqlite/my_db.db
 
     [filter:remote_addr]
     # for use behind nginx
@@ -261,8 +261,8 @@ ini config file.:
     sql.binary_attrs = portrait
     sql.log_auth = True
 
-UGM users and groups are stored in the same database as defined at ``sql.url``
-in the config file.
+UGM users and groups are stored in the same database as defined at
+``sql.db.url`` in the config file.
 
 UGM dedicated config options:
 

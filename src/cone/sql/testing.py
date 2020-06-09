@@ -94,10 +94,10 @@ class SQLLayer(Security):
     def init_sql(self):
         sql_backend = os.environ.get('CONE_SQL_TEST_BACKEND')
         # sqlite memory is default test backend
-        if not sql_backend:
+        if not sql_backend:  # pragma no cover
             engine = create_engine('sqlite:///:memory:', echo=False)
         # sqlite persistent in package folder for post mortem analysis
-        elif sql_backend == 'sqlite':
+        elif sql_backend == 'sqlite':  # pragma no cover
             curdir = os.path.dirname(__file__)
             fname = "%s/test.db" % curdir
             if os.path.exists(fname):
@@ -105,7 +105,7 @@ class SQLLayer(Security):
             uri = "sqlite:///" + fname
             engine = create_engine(uri)
         # alternatively use postgresql - ditches db before start
-        elif sql_backend == 'postgres':
+        elif sql_backend == 'postgres':  # pragma no cover
             os.system("dropdb ugm; createdb ugm")
             engine = create_engine("postgresql:///ugm", echo=False)
         initialize_sql(engine)
