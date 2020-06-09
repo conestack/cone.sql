@@ -390,6 +390,10 @@ class TestSqlUgm(NodeTestCase):
         gids = groups.search(criteria=dict(title='Masters*'))
         self.assertEqual(gids, ['managers'])
 
+        self.assertEqual(len(groups.keys()), 2)
+        gids = groups.search(criteria=dict(id='*foo*'), or_search=True)
+        self.assertEqual(len(gids), 0)
+
         del os.environ['CONE_SQL_USE_TM']
 
         # change fields of a user
