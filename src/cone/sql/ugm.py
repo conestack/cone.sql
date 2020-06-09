@@ -41,28 +41,10 @@ import itertools
 import os
 import uuid
 
-
-###############################################################################
-# XXX: remove, register mail user field for all backends in cone.ugm
-
-from cone.ugm.browser.principal import user_field
-from cone.ugm.browser.principal import email_field_factory
-
-file_email_field_factory = user_field('mail', backend='sql')(
-    email_field_factory
-)
-
-# XXX: end remove
-###############################################################################
-
-
 # HACK: Force sqlite to alias JSONB as JSON. This allows to use JSONB for the
 #       sqlalchemy variant, which is much more efficient when it comes to
 #       indexing and searching.
 SQLiteTypeCompiler.visit_JSONB = SQLiteTypeCompiler.visit_JSON
-
-
-ENCODING = 'utf-8'
 
 
 ###############################################################################
@@ -361,19 +343,7 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
 
     @default
     def __delitem__(self, key):
-        # this one does not work, throws
-        # AssertionError: Dependency rule tried to blank-out primary key column
-        # 'group_assignment.groups_guid' on instance
-        # '<SQLGroupAssignment at 0x10f831310>'
-        # self.record.users.remove(self.ugm.users[key].record)
-        user = self.ugm.users[key]
-        assoc = self.ugm.users.session.query(SQLGroupAssignment).filter(
-            and_(
-                SQLGroupAssignment.groups_guid == self.record.guid,
-                SQLGroupAssignment.users_guid == user.record.guid
-            )
-        ).one()
-        self.ugm.users.session.delete(assoc)
+        self.record.users.remove(self.ugm.users[key].record)
 
     @default
     def __iter__(self):
@@ -511,6 +481,9 @@ class PrincipalsBehavior(Behavior):
             self.session.commit()
 
 
+ENCODING = 'utf-8'
+
+
 class AuthenticationBehavior(Behavior):
     """Handles password authentication for ugm contract:
 
@@ -587,20 +560,16 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     @default
     def id_for_login(self, login):
         try:
-            # JSON field works so that the searchterm has to be enclosed in
-            # doublequotes
+            # Searchterm has to be enclosed in doublequotes to work on JSON fields
             searchterm = '"%s"' % login
+            field_name = SQLUser.login
             if self.session.bind.dialect.name == 'sqlite':
-                # if the key to the json field is variable we need a special
+                # If the key to the json field is variable we need a special
                 # treatment for sqlite
-                field_name = ('$.' + SQLUser.login).cast(String)
-                res = self.session.query(SQLUser).filter(
-                    SQLUser.data[field_name].cast(String) == searchterm
-                ).one()
-            else:
-                res = self.session.query(SQLUser).filter(
-                    SQLUser.data[SQLUser.login].cast(String) == searchterm
-                ).one()
+                field_name = ('$.' + field_name).cast(String)
+            res = self.session.query(SQLUser).filter(
+                SQLUser.data[field_name].cast(String) == searchterm
+            ).one()
             return res.id
         except NoResultFound:
             # if we dont find a login field, fall back assuming id is login
