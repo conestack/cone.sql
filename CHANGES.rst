@@ -6,7 +6,7 @@ Changes
 ----------------
 
 - SQL database URL setting key in ini file changed from ``cone.sql.db.url``
-  to ``sql.url``.
+  to ``sql.db.url``.
   [rnix]
 
 - Add SQL based UGM implementation.

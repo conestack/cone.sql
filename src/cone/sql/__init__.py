@@ -135,7 +135,7 @@ def initialize_cone_sql(config, global_config, settings):
     """Cone startup application initialization.
     """
     # database initialization
-    prefix = 'sql.'
+    prefix = 'sql.db.'
     if settings.get('{}url'.format(prefix), None) is None:  # pragma: no cover
         return
     global session_factory
