@@ -400,6 +400,7 @@ class PrincipalsBehavior(Behavior):
             if key in criteria
         ]
         for key in fixed_attrs:
+            criteria = criteria.copy()
             criteria.pop(key, None)
 
         def literal(value):
