@@ -502,6 +502,9 @@ class AuthenticationBehavior(Behavior):
     @override
     def authenticate(self, id=None, pw=None):
         # cannot authenticate user with unset password.
+        if not id or not pw:
+            return False
+
         if id not in self:
             return False
 

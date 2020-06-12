@@ -161,6 +161,10 @@ class TestSqlUgm(NodeTestCase):
         self.assertNotEqual(users['dagobert'].record.password, None)
 
         self.assertFalse(users.authenticate('zworkb', 'test123'))
+        self.assertFalse(users.authenticate(None, "foo"))
+        self.assertFalse(users.authenticate("foo", None))
+        self.assertFalse(users.authenticate(None, None))
+
         self.assertTrue(users['phil'].authenticate('test123'))
         self.assertTrue(users.authenticate('phil', 'test123'))
         self.assertTrue(users.authenticate('donald', 'test123'))
