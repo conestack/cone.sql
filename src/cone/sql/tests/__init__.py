@@ -15,6 +15,12 @@ def test_suite():
     suite.addTest(unittest.findTestCases(test_acl))
     suite.addTest(unittest.findTestCases(test_ugm))
 
+    try:
+        from cone.sql.tests import test_cone_ugm
+        suite.addTest(unittest.findTestCases(test_cone_ugm))
+    except ImportError:
+        pass
+
     return suite
 
 
