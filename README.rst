@@ -306,5 +306,4 @@ Contributors
 ============
 
 - Robert Niederreiter (Author)
-
 - Phil Auersperg
