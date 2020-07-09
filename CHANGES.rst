@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.3 (unreleased)
+0.3 (2020-07-09)
 ----------------
 
 - SQL database URL setting key in ini file changed from ``cone.sql.db.url``

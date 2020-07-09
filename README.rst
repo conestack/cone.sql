@@ -12,10 +12,6 @@
 .. image:: https://coveralls.io/repos/github/bluedynamics/cone.sql/badge.svg?branch=master
     :target: https://coveralls.io/github/bluedynamics/cone.sql?branch=master
 
-
-cone.sql
-========
-
 This package provides SQLAlchemy integration in ``cone.app`` and basic
 application nodes for publishing SQLAlchemy models.
 
