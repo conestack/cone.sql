@@ -302,25 +302,6 @@ TODO
 - Support multiple primary keys.
 
 
-Test coverage
--------------
-
-Summary of the test coverage report::
-
-    Name                               Stmts   Miss  Cover
-    ------------------------------------------------------
-    src/cone/sql/__init__.py              50      0   100%
-    src/cone/sql/acl.py                   62      0   100%
-    src/cone/sql/model.py                162      0   100%
-    src/cone/sql/testing.py               36      0   100%
-    src/cone/sql/tests/__init__.py        18      0   100%
-    src/cone/sql/tests/test_acl.py        86      0   100%
-    src/cone/sql/tests/test_model.py     225      0   100%
-    src/cone/sql/tests/test_sql.py        38      0   100%
-    ------------------------------------------------------
-    TOTAL                                677      0   100%
-
-
 Contributors
 ============
 
