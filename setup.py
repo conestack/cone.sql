@@ -58,13 +58,11 @@ setup(
             'cone.ugm'
         ],
         test=[
-            'Pillow',
             'zope.testrunner',
             'cone.ugm'
         ]
     ),
     tests_require=[
-        'Pillow',
         'zope.testrunner',
         'cone.ugm'
     ],
