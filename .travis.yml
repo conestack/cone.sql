@@ -1,6 +1,6 @@
 dist: bionic
 language: python
-sudo: true
+sudo: false
 
 python:
   - "2.7"
@@ -10,8 +10,7 @@ python:
   - "3.8"
 
 before_script:
-  - echo 'Europe/Vienna' | sudo tee /etc/timezone
-  - sudo dpkg-reconfigure --frontend noninteractive tzdata
+  - export TZ=Europe/Vienna
 
 install:
   - pip install coverage
