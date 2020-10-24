@@ -4,7 +4,8 @@ Changes
 0.4 (unreleased)
 ----------------
 
-- No changes yet.
+- Fix typo in ``SqlUGMFactory.__init__``.
+  [rnix]
 
 
 0.3 (2020-07-09)

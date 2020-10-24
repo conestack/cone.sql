@@ -168,7 +168,7 @@ class SqlUGMFactory(UGMFactory):
             self.group_attrs = ugm_settings.groups_form_attrmap.keys()
         # users and groups attributes are read from application ini file
         else:
-            self.user_atts = [
+            self.user_attrs = [
                 attr.strip() for attr in
                 settings.get('sql.user_attrs', '').split(',')
                 if attr.strip()
