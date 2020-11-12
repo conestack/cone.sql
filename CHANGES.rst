@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.4 (unreleased)
+0.4 (2020-11-12)
 ----------------
 
 - Fix typo in ``SqlUGMFactory.__init__``.
