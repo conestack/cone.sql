@@ -118,7 +118,7 @@ class TestSqlUgm(NodeTestCase):
             users.create(
                 id,
                 height=count + 1,
-                email='%s@bluedynamics.net' % id,
+                email='%s@conestack.org' % id,
                 status='super%s' % (count + 1)
             )
 
@@ -160,10 +160,10 @@ class TestSqlUgm(NodeTestCase):
 
         # check login attribute (lets take email)
         # schlumpf and schlumpfine with 2 different login fields
-        users.create('schlumpf', email='schlumpf@bluedynamics.net', login='email')
+        users.create('schlumpf', email='schlumpf@conestack.org', login='email')
         users.create('schlumpfine', nickname='schlumpfinchen', login='nickname')
 
-        schlumpfid = users.id_for_login('schlumpf@bluedynamics.net')
+        schlumpfid = users.id_for_login('schlumpf@conestack.org')
         self.assertEqual(schlumpfid, 'schlumpf')
 
         schlumpfineid = users.id_for_login('schlumpfinchen')
@@ -315,28 +315,28 @@ class TestSqlUgm(NodeTestCase):
         r9 = users.search(attrlist=[])
         self.assertEqual(sorted(r9), sorted([
             ('donald', {
-                'email': 'donald@bluedynamics.net',
+                'email': 'donald@conestack.org',
                 'height': 2,
                 'login': None,
                 'status': 'super2'
             }), ('dagobert', {
-                'email': 'dagobert@bluedynamics.net',
+                'email': 'dagobert@conestack.org',
                 'height': 3,
                 'login': None,
                 'status': 'super3'
             }), ('mickey', {
-                'email': 'mickey@bluedynamics.net',
+                'email': 'mickey@conestack.org',
                 'height': 4,
                 'login': None,
                 'status': 'super4'
             }), ('schlumpf', {
-                'email': 'schlumpf@bluedynamics.net',
+                'email': 'schlumpf@conestack.org',
                 'login': 'email'
             }), ('schlumpfine', {
                 'login': 'nickname',
                 'nickname': 'schlumpfinchen'
             }), ('phil', {
-                'email': 'phil@bluedynamics.net',
+                'email': 'phil@conestack.org',
                 'height': 1,
                 'login': None,
                 'status': 'super1'
