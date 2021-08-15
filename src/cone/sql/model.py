@@ -48,6 +48,7 @@ class GUID(TypeDecorator):
     http://docs.sqlalchemy.org/en/rel_0_8/core/types.html#backend-agnostic-guid-type
     """
     impl = CHAR
+    cache_ok = True
 
     def load_dialect_impl(self, dialect):
         if dialect.name == 'postgresql':

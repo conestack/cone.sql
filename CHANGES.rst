@@ -4,7 +4,9 @@ Changes
 0.5 (unreleased)
 ----------------
 
-- No changes yet.
+- Add ``cache_ok`` to ``GUID`` type decorator to prevent warning with
+  SQLAlchemy 1.4
+  [rnix]
 
 
 0.4 (2020-11-12)
