@@ -4,6 +4,10 @@ Changes
 0.5 (unreleased)
 ----------------
 
+- Rename deprecated ``SQLPrincipalRoles.allow_non_node_childs`` to
+  ``allow_non_node_children``
+  [rnix]
+
 - Add ``cache_ok`` to ``GUID`` type decorator to prevent warning with
   SQLAlchemy 1.4
   [rnix]

@@ -34,7 +34,7 @@ class PrincipalRoleRecord(SQLBase):
 class SQLPrincipalRoles(object):
     """Principal roles from sql.
     """
-    allow_non_node_childs = True
+    allow_non_node_children = True
 
     @property
     def session(self):
