@@ -9,7 +9,7 @@ def read_file(name):
         return f.read()
 
 
-version = '0.5.dev0'
+version = '0.5'
 shortdesc = 'SQLAlchemy integration for cone.app'
 longdesc = '\n\n'.join([read_file(name) for name in [
     'README.rst',
@@ -46,12 +46,12 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        'setuptools',
-        'zope.sqlalchemy',
-        'node.ext.ugm',
-        'pyramid_tm',
+        'cone.app>=1.0.3',
+        'node.ext.ugm>=0.9.13',
         'pyramid_retry',
-        'cone.app',
+        'pyramid_tm',
+        'setuptools',
+        'zope.sqlalchemy'
     ],
     extras_require=dict(
         ugm=[

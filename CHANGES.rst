@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.5 (unreleased)
+0.5 (2021-11-08)
 ----------------
 
 - Rename deprecated ``SQLPrincipalRoles.allow_non_node_childs`` to
