@@ -5,19 +5,13 @@ from cone.sql import get_session
 from cone.sql import initialize_sql
 from cone.sql import setup_session
 from cone.sql import sql_session_setup
+from cone.ugm import testing
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.orm import sessionmaker
 import os
 import shutil
 import tempfile
-
-
-try:
-    from cone.ugm import testing
-    CONE_UGM_INSTALLED = True
-except ImportError:
-    CONE_UGM_INSTALLED = False
 
 
 ###############################################################################
@@ -67,21 +61,20 @@ class delete_table_records(object):
 # Test layer
 ###############################################################################
 
-class SQLLayer(Security):
+class SQLLayer(testing.UGMLayer):
 
     def make_app(self):
-        kw = dict()
-        plugins = ['cone.sql']
-        if CONE_UGM_INSTALLED:
-            plugins.append('cone.ugm')
-            kw['ugm.backend'] = 'sql'
-            kw['ugm.config'] = testing.ugm_config
-            kw['ugm.localmanager_config'] = testing.localmanager_config
-            kw['sql.binary_attrs'] = 'portrait'
-        kw['cone.plugins'] = '\n'.join(plugins)
-        super(SQLLayer, self).make_app(**kw)
-        if CONE_UGM_INSTALLED:
-            ugm_backend.initialize()
+        super(testing.UGMLayer, self).make_app(**{
+            'cone.plugins': '\n'.join([
+                'cone.ugm',
+                'cone.sql'
+            ]),
+            'ugm.backend': 'sql',
+            'ugm.config': testing.ugm_config,
+            'ugm.localmanager_config': testing.localmanager_config,
+            'sql.binary_attrs': 'portrait'
+        })
+        ugm_backend.initialize()
 
     def setUp(self, args=None):
         self.tempdir = tempfile.mkdtemp()
