@@ -1,9 +1,11 @@
 from cone.sql import testing
+from cone.tile.tests import TileTestCase
 from cone.ugm.tests import test_browser_actions
 from cone.ugm.tests import test_browser_autoincrement
 from cone.ugm.tests import test_browser_expires
 from cone.ugm.tests import test_browser_group
 from cone.ugm.tests import test_browser_groups
+# from cone.ugm.tests import test_browser_password
 from cone.ugm.tests import test_browser_portrait
 from cone.ugm.tests import test_browser_principal
 from cone.ugm.tests import test_browser_remote
@@ -21,91 +23,166 @@ from cone.ugm.tests import test_model_user
 from cone.ugm.tests import test_model_users
 from cone.ugm.tests import test_settings
 from cone.ugm.tests import test_utils
+from node.tests import NodeTestCase
+import unittest
 
 
-class TestLayout(test_layout.TestLayout):
+class TestLayout(
+    unittest.TestCase,
+    test_layout.TestLayoutBase
+):
     pass
 
 
-class TestModelLocalmanager(test_localmanager.TestModelLocalmanager):
+class TestModelLocalmanager(
+    NodeTestCase,
+    test_localmanager.TestModelLocalmanagerBase
+):
     layer = testing.sql_layer
 
 
-class TestModelSettings(test_settings.TestModelSettings):
+class TestSettings(
+    NodeTestCase,
+    test_settings.TestSettingsBase
+):
     layer = testing.sql_layer
 
 
-class TestModelUtils(test_utils.TestModelUtils):
+class TestUtils(
+    unittest.TestCase,
+    test_utils.TestUtilsBase
+):
     layer = testing.sql_layer
 
 
-class TestModelGroup(test_model_group.TestModelGroup):
+class TestModelGroup(
+    unittest.TestCase,
+    test_model_group.TestModelGroupBase
+):
     layer = testing.sql_layer
 
 
-class TestModelGroups(test_model_groups.TestModelGroups):
+class TestModelGroups(
+    NodeTestCase,
+    test_model_groups.TestModelGroupsBase
+):
     layer = testing.sql_layer
 
 
-class TestModelUser(test_model_user.TestModelUser):
+class TestModelUser(
+    unittest.TestCase,
+    test_model_user.TestModelUserBase
+):
     layer = testing.sql_layer
 
 
-class TestModelUsers(test_model_users.TestModelUsers):
+class TestModelUsers(
+    NodeTestCase,
+    test_model_users.TestModelUsersBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserActions(test_browser_actions.TestBrowserActions):
+class TestBrowserActions(
+    TileTestCase,
+    test_browser_actions.TestBrowserActionsBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserAutoincrement(test_browser_autoincrement.TestBrowserAutoincrement):
+class TestBrowserAutoincrement(
+    TileTestCase,
+    test_browser_autoincrement.TestBrowserAutoincrementBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserExpires(test_browser_expires.TestBrowserExpires):
+class TestBrowserExpires(
+    TileTestCase,
+    test_browser_expires.TestBrowserExpiresBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserGroup(test_browser_group.TestBrowserGroup):
+class TestBrowserGroup(
+    TileTestCase,
+    test_browser_group.TestBrowserGroupBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserGroups(test_browser_groups.TestBrowserGroups):
+class TestBrowserGroups(
+    TileTestCase,
+    test_browser_groups.TestBrowserGroupsBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserPortrait(test_browser_portrait.TestBrowserPortrait):
+# class TestBrowserPassword(
+#     TileTestCase,
+#     test_browser_password.TestBrowserPasswordBase
+# ):
+#     layer = testing.sql_layer
+
+
+class TestBrowserPortrait(
+    TileTestCase,
+    test_browser_portrait.TestBrowserPortraitBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserPrincipal(test_browser_principal.TestBrowserPrincipal):
+class TestBrowserPrincipal(
+    TileTestCase,
+    test_browser_principal.TestBrowserPrincipalBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserRemote(test_browser_remote.TestBrowserRemote):
+class TestBrowserRemote(
+    TileTestCase,
+    test_browser_remote.TestBrowserRemoteBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserRoles(test_browser_roles.TestBrowserRoles):
+class TestBrowserRoles(
+    TileTestCase,
+    test_browser_roles.TestBrowserRolesBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserRoot(test_browser_root.TestBrowserRoot):
+class TestBrowserRoot(
+    TileTestCase,
+    test_browser_root.TestBrowserRootBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserSettings(test_browser_settings.TestBrowserSettings):
+class TestBrowserSettings(
+    TileTestCase,
+    test_browser_settings.TestBrowserSettingsBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserUser(test_browser_user.TestBrowserUser):
+class TestBrowserUser(
+    TileTestCase,
+    test_browser_user.TestBrowserUserBase
+):
     layer = testing.sql_layer
 
 
-class TestBroeserUsers(test_browser_users.TestBrowserUsers):
+class TestBrowserUsers(
+    TileTestCase,
+    test_browser_users.TestBrowserUsersBase
+):
     layer = testing.sql_layer
 
 
-class TestBrowserUtils(test_browser_utils.TestBrowserUtils):
+class TestBrowserUtils(
+    TileTestCase,
+    test_browser_utils.TestBrowserUtilsBase
+):
     layer = testing.sql_layer
