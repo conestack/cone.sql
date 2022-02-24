@@ -13,25 +13,22 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 import os
 import unittest
+import shutil
+import tempfile
 
 
 def temp_database(fn):
-    """This decorator creates an in-memory sqlite db for testing the user
-    classes.
-    """
-
     def wrapper(self):
-        curdir = os.path.dirname(__file__)
-        fname = '%s/test.db' % curdir
-        if os.path.exists(fname):
-            os.remove(fname)
-        uri = 'sqlite:///' + fname
+        tempdir = tempfile.mkdtemp()
+        uri = 'sqlite:///{}/test.db'.format(tempdir)
         engine = create_engine(uri)
         Base.metadata.create_all(engine)
         sm = sessionmaker(bind=engine)
         session = sm()
-        fn(self, session)
-
+        try:
+            fn(self, session)
+        finally:
+            shutil.rmtree(tempdir)
     return wrapper
 
 
