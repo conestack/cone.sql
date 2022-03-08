@@ -5,12 +5,11 @@ from cone.sql.model import SQLRowNodeAttributes
 from cone.sql.model import SQLSession
 from cone.sql.model import UNICODE_TYPE
 from datetime import datetime
-from node.behaviors import Adopt
 from node.behaviors import Attributes
 from node.behaviors import DefaultInit
-from node.behaviors import NodeChildValidate
-from node.behaviors import Nodespaces
-from node.behaviors import Nodify
+from node.behaviors import MappingAdopt
+from node.behaviors import MappingConstraints
+from node.behaviors import MappingNode
 from node.ext.ugm import Group as BaseGroup
 from node.ext.ugm import Groups as BaseGroups
 from node.ext.ugm import Ugm as BaseUgm
@@ -311,10 +310,9 @@ class UserBehavior(PrincipalBehavior, BaseUser):
 
 @plumbing(
     UserBehavior,
-    Nodespaces,
     Attributes,
-    Nodify,
-    Adopt,
+    MappingNode,
+    MappingAdopt,
     SQLSession)
 class User(object):
     pass
@@ -365,9 +363,8 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
 
 @plumbing(
     GroupBehavior,
-    Nodespaces,
     Attributes,
-    Nodify,
+    MappingNode,
     SQLSession)
 class Group(object):
     pass
@@ -647,11 +644,10 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
 @plumbing(
     UsersBehavior,
     AuthenticationBehavior,
-    NodeChildValidate,
-    Nodespaces,
-    Adopt,
+    MappingConstraints,
+    MappingAdopt,
     Attributes,
-    Nodify,
+    MappingNode,
     SQLSession,
     DefaultInit)
 class Users(object):
@@ -710,11 +706,10 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
 
 @plumbing(
     GroupsBehavior,
-    NodeChildValidate,
-    Nodespaces,
-    Adopt,
+    MappingConstraints,
+    MappingAdopt,
     Attributes,
-    Nodify,
+    MappingNode,
     SQLSession,
     DefaultInit)
 class Groups(object):
@@ -793,7 +788,7 @@ class UgmBehavior(BaseUgm):
 
 @plumbing(
     UgmBehavior,
-    Nodify,
+    MappingNode,
     SQLSession)
 class Ugm(object):
     pass

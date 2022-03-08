@@ -2,10 +2,10 @@ from cone.app.security import PrincipalACL
 from cone.sql import get_session
 from cone.sql import SQLBase
 from cone.sql.model import GUID
-from node.behaviors import Adopt
 from node.behaviors import DefaultInit
-from node.behaviors import NodeChildValidate
-from node.behaviors import Nodify
+from node.behaviors import MappingAdopt
+from node.behaviors import MappingConstraints
+from node.behaviors import MappingNode
 from node.interfaces import IUUID
 from node.utils import instance_property
 from plumber import default
@@ -27,14 +27,14 @@ class PrincipalRoleRecord(SQLBase):
 
 
 @plumbing(
-    NodeChildValidate,
-    Adopt,
+    MappingConstraints,
+    MappingAdopt,
     DefaultInit,
-    Nodify)
+    MappingNode)
 class SQLPrincipalRoles(object):
     """Principal roles from sql.
     """
-    allow_non_node_children = True
+    child_constraints = None
 
     @property
     def session(self):

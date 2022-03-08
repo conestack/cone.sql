@@ -4,7 +4,23 @@ Changes
 0.6 (unreleased)
 ----------------
 
-- No changes yet.
+- Remove usage of ``Nodespaces`` behavior.
+  [rnix]
+
+- Replace deprecated use of ``IStorage`` by ``IMappingStorage``.
+  [rnix]
+
+- Replace deprecated use of ``Nodify`` by ``MappingNode``.
+  [rnix]
+
+- Replace deprecated use of ``Adopt`` by ``MappingAdopt``.
+  [rnix]
+
+- Replace deprecated use of ``NodeChildValidate`` by ``MappingConstraints``.
+  [rnix]
+
+- Replace deprecated use of ``allow_non_node_children`` by ``child_constraints``.
+  [rnix]
 
 
 0.5 (2021-11-08)

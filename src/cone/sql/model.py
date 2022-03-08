@@ -1,15 +1,14 @@
 from cone.app.model import AppNode
 from cone.sql import get_session
 from cone.sql import use_tm
-from node.behaviors import Adopt
 from node.behaviors import Attributes
 from node.behaviors import DefaultInit
 from node.behaviors import Lifecycle
+from node.behaviors import MappingAdopt
+from node.behaviors import MappingNode
 from node.behaviors import NodeAttributes
-from node.behaviors import Nodespaces
-from node.behaviors import Nodify
 from node.interfaces import ICallable
-from node.interfaces import IStorage
+from node.interfaces import IMappingStorage
 from plumber import Behavior
 from plumber import default
 from plumber import finalize
@@ -79,7 +78,7 @@ class GUID(TypeDecorator):
 # SQL table storage
 ###############################################################################
 
-@implementer(IStorage, ICallable)
+@implementer(IMappingStorage, ICallable)
 class SQLTableStorage(Behavior):
     # SQL alchemy model class
     record_class = default(None)
@@ -215,7 +214,7 @@ class SQLRowNodeAttributes(NodeAttributes):
         return name in self._columns
 
 
-@implementer(IStorage, ICallable)
+@implementer(IMappingStorage, ICallable)
 class SQLRowStorage(Behavior):
     # SQL alchemy model class
     record_class = default(None)
@@ -286,9 +285,9 @@ class SQLSession(Behavior):
 
 @plumbing(
     AppNode,
-    Adopt,
+    MappingAdopt,
     DefaultInit,
-    Nodify,
+    MappingNode,
     Lifecycle,
     SQLSession,
     SQLTableStorage)
@@ -299,9 +298,8 @@ class SQLTableNode(object):
 
 @plumbing(
     AppNode,
-    Nodespaces,
     Attributes,
-    Nodify,
+    MappingNode,
     Lifecycle,
     SQLSession,
     SQLRowStorage)
