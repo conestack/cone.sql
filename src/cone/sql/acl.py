@@ -109,4 +109,4 @@ class SQLPrincipalACL(PrincipalACL):
     def principal_roles(self):
         if not IUUID.providedBy(self):
             raise RuntimeError(u"%s does not implement IUUID" % str(self))
-        return SQLPrincipalRoles('principal_roles', parent=self)
+        return SQLPrincipalRoles(name='principal_roles', parent=self)

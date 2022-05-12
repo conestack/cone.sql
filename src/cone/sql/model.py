@@ -185,7 +185,7 @@ class SQLTableStorage(Behavior):
 
 class SQLRowNodeAttributes(NodeAttributes):
 
-    def __init__(self, name, parent, record):
+    def __init__(self, name=None, parent=None, record=None):
         NodeAttributes.__init__(self, name, parent)
         self.record = record
 

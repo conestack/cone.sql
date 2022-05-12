@@ -219,7 +219,7 @@ class PrincipalBehavior(Behavior):
     """Reference to sqlalchemy record instance."""
 
     @override
-    def __init__(self, parent, record):
+    def __init__(self, parent=None, record=None):
         self.__parent__ = parent
         self.record = record
 
@@ -582,7 +582,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
             sqluser = self.session.query(SQLUser).filter(SQLUser.id == id).one()
         except NoResultFound:
             raise KeyError(id)
-        return User(self, sqluser)
+        return User(parent=self, record=sqluser)
 
     @default
     def __delitem__(self, id):
@@ -676,7 +676,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
                 .one()
         except NoResultFound:
             raise KeyError(id)
-        return Group(self, sqlgroup)
+        return Group(parent=self, record=sqlgroup)
 
     @default
     def __delitem__(self, id):
@@ -729,8 +729,8 @@ class UgmBehavior(BaseUgm):
                  group_attrs, binary_attrs, log_auth):
         self.__name__ = name
         self.__parent__ = parent
-        self.users = Users('users', self)
-        self.groups = Groups('groups', self)
+        self.users = Users(name='users', parent=self)
+        self.groups = Groups(name='groups', parent=self)
         self.user_attrs = user_attrs
         self.group_attrs = group_attrs
         self.binary_attrs = binary_attrs
@@ -774,14 +774,14 @@ class UgmBehavior(BaseUgm):
     @default
     def invalidate(self, key=None):
         if not key:
-            self.users = Users('users', self)
-            self.groups = Groups('groups', self)
+            self.users = Users(name='users', parent=self)
+            self.groups = Groups(name='groups', parent=self)
             return
         if key == 'users':
-            self.users = Users('users', self)
+            self.users = Users(name='users', parent=self)
             return
         if key == 'groups':
-            self.groups = Groups('groups', self)
+            self.groups = Groups(name='groups', parent=self)
             return
         raise KeyError(key)
 
