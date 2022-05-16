@@ -63,8 +63,8 @@ class delete_table_records(object):
 
 class SQLLayer(testing.UGMLayer):
 
-    def make_app(self):
-        super(testing.UGMLayer, self).make_app(**{
+    def make_app(self, **kw):
+        settings = {
             'cone.plugins': '\n'.join([
                 'cone.ugm',
                 'cone.sql'
@@ -73,7 +73,9 @@ class SQLLayer(testing.UGMLayer):
             'ugm.config': testing.ugm_config,
             'ugm.localmanager_config': testing.localmanager_config,
             'sql.binary_attrs': 'portrait'
-        })
+        }
+        settings.update(**kw)
+        super(testing.UGMLayer, self).make_app(**kw)
         ugm_backend.initialize()
 
     def setUp(self, args=None):
