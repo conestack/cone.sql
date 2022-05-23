@@ -75,8 +75,7 @@ class SQLLayer(testing.UGMLayer):
             'sql.binary_attrs': 'portrait'
         }
         settings.update(**kw)
-        super(testing.UGMLayer, self).make_app(**kw)
-        ugm_backend.initialize()
+        super(SQLLayer, self).make_app(**kw)
 
     def setUp(self, args=None):
         self.tempdir = tempfile.mkdtemp()
