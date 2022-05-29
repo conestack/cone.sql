@@ -289,14 +289,14 @@ class TestModel(NodeTestCase):
         root = get_root()
         container = root['integer_as_key_container']
 
-        err = self.expect_error(KeyError, container.__getitem__, 'a')
+        err = self.expectError(KeyError, container.__getitem__, 'a')
         expected = (
             '"Failed to convert node name to expected primary key data type: '
             'invalid literal for int() with base 10: \'a\'"'
         )
         self.assertEqual(str(err), expected)
 
-        err = self.expect_error(
+        err = self.expectError(
             KeyError,
             container.__setitem__,
             'a',
@@ -312,7 +312,7 @@ class TestModel(NodeTestCase):
         # ``__setitem__`` not matches attribute value, a ``KeyError`` is thrown.
         child = IntegerAsKeyNode()
         child.attrs['integer_key'] = 123
-        err = self.expect_error(
+        err = self.expectError(
             KeyError,
             container.__setitem__,
             '124',
@@ -322,7 +322,7 @@ class TestModel(NodeTestCase):
         self.assertEqual(str(err), expected)
 
         # Access inexistent child
-        err = self.expect_error(
+        err = self.expectError(
             KeyError,
             container.__getitem__,
             '124'
@@ -398,14 +398,14 @@ class TestModel(NodeTestCase):
         )
 
         # Access inexisting attributes
-        err = self.expect_error(
+        err = self.expectError(
             KeyError,
             child.attrs.__getitem__,
             'inexistent'
         )
         self.assertEqual(str(err), "'Unknown attribute: inexistent'")
 
-        err = self.expect_error(
+        err = self.expectError(
             KeyError,
             child.attrs.__setitem__,
             'inexistent',
@@ -414,7 +414,7 @@ class TestModel(NodeTestCase):
         self.assertEqual(str(err), "'Unknown attribute: inexistent'")
 
         # SQL row node attributes cannot be deleted
-        err = self.expect_error(
+        err = self.expectError(
             KeyError,
             child.attrs.__delitem__,
             'field'
@@ -423,7 +423,7 @@ class TestModel(NodeTestCase):
 
         # SQL row node is a leaf thus containment API always raises KeyError
         # and iter returns empty result.
-        err = self.expect_error(
+        err = self.expectError(
             KeyError,
             child.__setitem__,
             'foo',
@@ -431,14 +431,14 @@ class TestModel(NodeTestCase):
         )
         self.assertEqual(str(err), "'foo'")
 
-        err = self.expect_error(
+        err = self.expectError(
             KeyError,
             child.__getitem__,
             'foo'
         )
         self.assertEqual(str(err), "'foo'")
 
-        err = self.expect_error(
+        err = self.expectError(
             KeyError,
             child.__delitem__,
             'foo'
