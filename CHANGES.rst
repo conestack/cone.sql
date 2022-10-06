@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.6 (unreleased)
+0.6 (2022-10-06)
 ----------------
 
 - Remove usage of ``Nodespaces`` behavior.
