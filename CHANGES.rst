@@ -4,7 +4,9 @@ Changes
 0.7 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Add ``TestSQLSessionFactory`` and set to ``cone.sql.session_factory`` in
+  ``SQLLayer.init_sql`` if not present.
+  [rnix, toalba]
 
 
 0.6 (2022-10-06)

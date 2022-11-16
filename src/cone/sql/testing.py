@@ -58,6 +58,21 @@ class delete_table_records(object):
 
 
 ###############################################################################
+# Test SQL session factory
+###############################################################################
+
+class TestSQLSessionFactory(object):
+
+    def __init__(self, maker):
+        self.maker = maker
+
+    def __call__(self):
+        session = self.maker()
+        setup_session(session)
+        return session
+
+
+###############################################################################
 # Test layer
 ###############################################################################
 
@@ -113,6 +128,8 @@ class SQLLayer(testing.UGMLayer):
         maker = sessionmaker(bind=engine)
         if sql.session_factory:  # pragma no cover
             sql.session_factory.maker = maker
+        else:
+            sql.session_factory = TestSQLSessionFactory(maker)
         session = maker()
         setup_session(session)
         self.sql_session = session
