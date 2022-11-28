@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+
 TEST="bin/python -m cone.sql.tests.__init__"
 
 clear

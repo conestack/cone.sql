@@ -184,6 +184,7 @@ class SqlUGMFactory(UGMFactory):
             if attr.strip()
         ]
         self.log_auth = settings.get('sql.log_auth') in ['true', 'True', '1']
+        self.user_expires_attr = settings.get('sql.user_expires_attr')
 
     def __call__(self):
         from cone.sql.ugm import Ugm
@@ -193,5 +194,6 @@ class SqlUGMFactory(UGMFactory):
             user_attrs=self.user_attrs,
             group_attrs=self.group_attrs,
             binary_attrs=self.binary_attrs,
-            log_auth=self.log_auth
+            log_auth=self.log_auth,
+            user_expires_attr=self.user_expires_attr
         )

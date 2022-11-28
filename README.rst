@@ -256,6 +256,7 @@ ini config file.:
     sql.group_attrs = description
     sql.binary_attrs = portrait
     sql.log_auth = True
+    sql.user_expires_attr = expires
 
 UGM users and groups are stored in the same database as defined at
 ``sql.db.url`` in the config file.
@@ -275,6 +276,10 @@ UGM dedicated config options:
 - ``sql.log_auth`` defaults to False. If set, the first login timestamp will
   be stored during the first authentication and latest login timestamp will be
   updated for each successful authentication.
+
+- ``sql.user_expires_attr`` defaults to None. If set, user expiration is
+  enabled and the value given is the attribute name of the JSON data field
+  where the expiration timestamp gets stored.
 
 Users and groups can be managed with ``cone.ugm``. If activated,
 ``sql.user_attrs`` and ``sql.group_attrs`` can be omitted, relevant information

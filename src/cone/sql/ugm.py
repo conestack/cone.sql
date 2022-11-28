@@ -21,13 +21,13 @@ from plumber import Behavior
 from plumber import default
 from plumber import override
 from plumber import plumbing
-from sqlalchemy import and_
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
-from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import and_
+from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -38,7 +38,9 @@ import base64
 import hashlib
 import itertools
 import os
+import time
 import uuid
+
 
 # HACK: Force sqlite to alias JSONB as JSON. This allows to use JSONB for the
 #       sqlalchemy variant, which is much more efficient when it comes to
@@ -275,6 +277,34 @@ class UserBehavior(PrincipalBehavior, BaseUser):
 
     @default
     @property
+    def expired(self):
+        expires = self.expires
+        if not expires:
+            return False
+        return datetime.now() >= expires
+
+    @property
+    def expires(self):
+        ugm = self.parent.parent
+        if not ugm.user_expires_attr:
+            return None
+        expires = self.attrs.get(ugm.user_expires_attr)
+        if not expires:
+            return None
+        return datetime.fromtimestamp(float(expires))
+
+    @override
+    @expires.setter
+    def expires(self, value):
+        ugm = self.parent.parent
+        if not ugm.user_expires_attr:
+            return
+        if not isinstance(value, datetime):
+            raise ValueError('Expires value must be a datetime instance')
+        self.attrs[ugm.user_expires_attr] = str(time.mktime(value.timetuple()))
+
+    @default
+    @property
     def group_ids(self):
         return [g.id for g in self.groups]
 
@@ -501,10 +531,10 @@ class AuthenticationBehavior(Behavior):
         # cannot authenticate user with unset password.
         if not id or not pw:
             return False
-
         if id not in self:
             return False
-
+        if self[id].expired:
+            return False
         hpw = self.get_hashed_pw(id)
         if hpw:
             authenticated = self._chk_pw(pw, hpw)
@@ -723,10 +753,19 @@ class UgmBehavior(BaseUgm):
     group_attrs = default([])
     binary_attrs = default([])
     log_auth = default(False)
+    user_expires_attr = default(None)
 
     @override
-    def __init__(self, name, parent, user_attrs,
-                 group_attrs, binary_attrs, log_auth):
+    def __init__(
+        self,
+        name,
+        parent,
+        user_attrs,
+        group_attrs,
+        binary_attrs,
+        log_auth,
+        user_expires_attr
+    ):
         self.__name__ = name
         self.__parent__ = parent
         self.users = Users(name='users', parent=self)
@@ -735,6 +774,7 @@ class UgmBehavior(BaseUgm):
         self.group_attrs = group_attrs
         self.binary_attrs = binary_attrs
         self.log_auth = log_auth
+        self.user_expires_attr = user_expires_attr
 
     @default
     def __call__(self):

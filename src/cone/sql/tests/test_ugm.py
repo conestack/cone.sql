@@ -7,14 +7,16 @@ from cone.sql.ugm import SQLPrincipal
 from cone.sql.ugm import SQLUser
 from cone.sql.ugm import Ugm
 from cone.sql.ugm import User
+from datetime import datetime
+from datetime import timedelta
 from node.tests import NodeTestCase
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 import os
-import unittest
 import shutil
 import tempfile
+import unittest
 
 
 def temp_database(fn):
@@ -101,7 +103,8 @@ class TestSqlUgm(NodeTestCase):
             user_attrs=['phone', 'address'],
             group_attrs=['description'],
             binary_attrs=[],
-            log_auth=True
+            log_auth=True,
+            user_expires_attr=None
         )
         users = ugm.users
         groups = ugm.groups
@@ -388,3 +391,39 @@ class TestSqlUgm(NodeTestCase):
         donald1 = users['donald']
         self.assertEqual(donald1.record.login, 'mail')
         self.assertEqual(donald1.record.data['mail'], 'donald@duck.com')
+
+        # Test expires
+        user = ugm.users['donald']
+        self.assertTrue(users.authenticate('donald', 'test123'))
+        self.assertFalse(user.expired)
+        self.assertEqual(user.expires, None)
+        user.expires = datetime.now()
+        self.assertEqual(user.expires, None)
+
+        ugm.user_expires_attr = 'expires'
+        self.assertFalse(user.expired)
+        with self.assertRaises(ValueError):
+            user.expires = 'expires'
+
+        user.attrs['expires'] = ''
+        self.assertFalse(user.expired)
+
+        user.expires = datetime.now() + timedelta(1)
+        self.assertFalse(user.expired)
+        self.assertTrue(user.authenticate('test123'))
+        self.assertTrue(ugm.users.authenticate('donald', 'test123'))
+
+        user.expires = datetime.now()
+        self.assertTrue(user.expired)
+        self.assertFalse(user.authenticate('test123'))
+        self.assertFalse(ugm.users.authenticate('donald', 'test123'))
+
+        ugm.session.commit()
+        donald = ugm.session.query(SQLUser)\
+            .filter(SQLUser.id == 'donald')\
+            .one()
+        self.assertTrue('expires' in donald.data)
+        self.assertEqual(
+            sorted(users['donald'].attrs.keys()),
+            ['address', 'phone']
+        )

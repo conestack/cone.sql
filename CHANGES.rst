@@ -4,6 +4,11 @@ Changes
 0.7 (unreleased)
 ----------------
 
+- Implement ``expires`` and ``expired`` on ``cone.sql.ugm.UserBehavior``.
+  Extend ``cone.sql.ugm.UgmBehavior`` by ``user_expires_attr`` which
+  enables used expiration support.
+  [rnix]
+
 - Add ``TestSQLSessionFactory`` and set to ``cone.sql.session_factory`` in
   ``SQLLayer.init_sql`` if not present.
   [rnix, toalba]
