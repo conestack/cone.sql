@@ -405,7 +405,8 @@ class TestSqlUgm(NodeTestCase):
         with self.assertRaises(ValueError):
             user.expires = 'expires'
 
-        user.attrs['expires'] = ''
+        user.expires = None
+        self.assertEqual(user.attrs['expires'], None)
         self.assertFalse(user.expired)
 
         user.expires = datetime.now() + timedelta(1)

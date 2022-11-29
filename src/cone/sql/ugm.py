@@ -291,7 +291,7 @@ class UserBehavior(PrincipalBehavior, BaseUser):
         expires = self.attrs.get(ugm.user_expires_attr)
         if not expires:
             return None
-        return datetime.fromtimestamp(float(expires))
+        return datetime.utcfromtimestamp(expires)
 
     @override
     @expires.setter
@@ -299,9 +299,12 @@ class UserBehavior(PrincipalBehavior, BaseUser):
         ugm = self.parent.parent
         if not ugm.user_expires_attr:
             return
+        if not value:
+            self.attrs[ugm.user_expires_attr] = None
+            return
         if not isinstance(value, datetime):
             raise ValueError('Expires value must be a datetime instance')
-        self.attrs[ugm.user_expires_attr] = str(time.mktime(value.timetuple()))
+        self.attrs[ugm.user_expires_attr] = time.mktime(value.utctimetuple())
 
     @default
     @property
