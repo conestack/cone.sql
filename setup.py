@@ -9,7 +9,7 @@ def read_file(name):
         return f.read()
 
 
-version = '0.7'
+version = '0.8.dev0'
 shortdesc = 'SQLAlchemy integration for cone.app'
 longdesc = '\n\n'.join([read_file(name) for name in [
     'README.rst',
