@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.7 (unreleased)
+0.7 (2022-12-05)
 ----------------
 
 - Implement ``expires`` and ``expired`` on ``cone.sql.ugm.UserBehavior``.
