@@ -4,7 +4,10 @@ Changes
 0.8 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Initialize SQL before calling ``setUp`` of super class in ``SQLLayer.setUp``,
+  which itself calls ``make_app``. This ensures ``sql.session_factory`` is
+  properly set if used in a cone ``main_hook``.
+  [rnix]
 
 
 0.7 (2022-12-05)

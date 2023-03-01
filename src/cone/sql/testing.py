@@ -94,8 +94,11 @@ class SQLLayer(testing.UGMLayer):
 
     def setUp(self, args=None):
         self.tempdir = tempfile.mkdtemp()
-        super(SQLLayer, self).setUp()
+        # initialize SQL before calling setUp() of super class, which itself
+        # calls make_app. This ensures sql.session_factory() is properly set
+        # if used in a cone main hook.
         self.init_sql()
+        super(SQLLayer, self).setUp()
         self.new_request()
 
     def tearDown(self):
