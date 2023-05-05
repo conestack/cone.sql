@@ -29,160 +29,160 @@ import unittest
 
 class TestLayout(
     unittest.TestCase,
-    test_layout.TestLayoutBase
+    test_layout.LayoutTests
 ):
     pass
 
 
 class TestModelLocalmanager(
     NodeTestCase,
-    test_localmanager.TestModelLocalmanagerBase
+    test_localmanager.ModelLocalmanagerTests
 ):
     layer = testing.sql_layer
 
 
 class TestSettings(
     NodeTestCase,
-    test_settings.TestSettingsBase
+    test_settings.SettingsTests
 ):
     layer = testing.sql_layer
 
 
 class TestUtils(
     unittest.TestCase,
-    test_utils.TestUtilsBase
+    test_utils.UtilsTests
 ):
     layer = testing.sql_layer
 
 
 class TestModelGroup(
     unittest.TestCase,
-    test_model_group.TestModelGroupBase
+    test_model_group.ModelGroupTests
 ):
     layer = testing.sql_layer
 
 
 class TestModelGroups(
     NodeTestCase,
-    test_model_groups.TestModelGroupsBase
+    test_model_groups.ModelGroupsTests
 ):
     layer = testing.sql_layer
 
 
 class TestModelUser(
     unittest.TestCase,
-    test_model_user.TestModelUserBase
+    test_model_user.ModelUserTests
 ):
     layer = testing.sql_layer
 
 
 class TestModelUsers(
     NodeTestCase,
-    test_model_users.TestModelUsersBase
+    test_model_users.ModelUsersTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserActions(
     TileTestCase,
-    test_browser_actions.TestBrowserActionsBase
+    test_browser_actions.BrowserActionsTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserAutoincrement(
     TileTestCase,
-    test_browser_autoincrement.TestBrowserAutoincrementBase
+    test_browser_autoincrement.BrowserAutoincrementTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserExpires(
     TileTestCase,
-    test_browser_expires.TestBrowserExpiresBase
+    test_browser_expires.BrowserExpiresTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserGroup(
     TileTestCase,
-    test_browser_group.TestBrowserGroupBase
+    test_browser_group.BrowserGroupTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserGroups(
     TileTestCase,
-    test_browser_groups.TestBrowserGroupsBase
+    test_browser_groups.BrowserGroupsTests
 ):
     layer = testing.sql_layer
 
 
 # class TestBrowserPassword(
 #     TileTestCase,
-#     test_browser_password.TestBrowserPasswordBase
+#     test_browser_password.BrowserPasswordTests
 # ):
 #     layer = testing.sql_layer
 
 
 class TestBrowserPortrait(
     TileTestCase,
-    test_browser_portrait.TestBrowserPortraitBase
+    test_browser_portrait.BrowserPortraitTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserPrincipal(
     TileTestCase,
-    test_browser_principal.TestBrowserPrincipalBase
+    test_browser_principal.BrowserPrincipalTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserRemote(
     TileTestCase,
-    test_browser_remote.TestBrowserRemoteBase
+    test_browser_remote.BrowserRemoteTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserRoles(
     TileTestCase,
-    test_browser_roles.TestBrowserRolesBase
+    test_browser_roles.BrowserRolesTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserRoot(
     TileTestCase,
-    test_browser_root.TestBrowserRootBase
+    test_browser_root.BrowserRootTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserSettings(
     TileTestCase,
-    test_browser_settings.TestBrowserSettingsBase
+    test_browser_settings.BrowserSettingsTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserUser(
     TileTestCase,
-    test_browser_user.TestBrowserUserBase
+    test_browser_user.BrowserUserTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserUsers(
     TileTestCase,
-    test_browser_users.TestBrowserUsersBase
+    test_browser_users.BrowserUsersTests
 ):
     layer = testing.sql_layer
 
 
 class TestBrowserUtils(
     TileTestCase,
-    test_browser_utils.TestBrowserUtilsBase
+    test_browser_utils.BrowserUtilsTests
 ):
     layer = testing.sql_layer
