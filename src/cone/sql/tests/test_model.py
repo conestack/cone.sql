@@ -160,7 +160,7 @@ class TestModel(NodeTestCase):
         # Query data record using SQLAlchemy directly
         request = self.layer.new_request()
         session = get_session(request)
-        rec = session.query(UUIDAsPrimaryKeyRecord).get(uuid.UUID(node_uid))
+        rec = session.get(UUIDAsPrimaryKeyRecord, uuid.UUID(node_uid))
         self.assertTrue(isinstance(rec, UUIDAsPrimaryKeyRecord))
 
         # Get children via node API
@@ -211,7 +211,7 @@ class TestModel(NodeTestCase):
         # Query data record using SQLAlchemy directly
         request = self.layer.new_request()
         session = get_session(request)
-        rec = session.query(StringAsPrimaryKeyRecord).get(u'key')
+        rec = session.get(StringAsPrimaryKeyRecord, u'key')
         self.assertTrue(isinstance(rec, StringAsPrimaryKeyRecord))
 
         # Get children via node API
@@ -248,7 +248,7 @@ class TestModel(NodeTestCase):
         # Query data record using SQLAlchemy directly
         request = self.layer.new_request()
         session = get_session(request)
-        rec = session.query(IntegerAsPrimaryKeyRecord).get('1234')
+        rec = session.get(IntegerAsPrimaryKeyRecord, '1234')
         self.assertTrue(isinstance(rec, IntegerAsPrimaryKeyRecord))
 
         # Get children via node API
