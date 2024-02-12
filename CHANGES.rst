@@ -1,7 +1,7 @@
 Changes
 =======
 
-0.8 (unreleased)
+0.8 (2024-02-12)
 ----------------
 
 - Initialize SQL before calling ``setUp`` of super class in ``SQLLayer.setUp``,
