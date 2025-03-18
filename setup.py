@@ -1,6 +1,5 @@
 from setuptools import find_packages
 from setuptools import setup
-from setuptools.command.test import test
 import os
 
 
@@ -16,13 +15,6 @@ longdesc = '\n\n'.join([read_file(name) for name in [
     'CHANGES.rst',
     'LICENSE.rst'
 ]])
-
-
-class Test(test):
-
-    def run_tests(self):
-        from cone.sql import tests
-        tests.run_tests()
 
 
 setup(
@@ -58,15 +50,11 @@ setup(
             'cone.ugm'
         ],
         test=[
-            'zope.testrunner',
+            'pytest',
+            'zope.pytestlayer',
             'cone.ugm'
         ]
     ),
-    tests_require=[
-        'zope.testrunner',
-        'cone.ugm'
-    ],
-    cmdclass=dict(test=Test),
     entry_points="""\
     [paste.filter_app_factory]
     session = cone.sql:make_app
