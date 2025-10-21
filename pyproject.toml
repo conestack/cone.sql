@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "cone.sql"
@@ -38,15 +38,6 @@ Homepage = "http://github.com/conestack/cone.sql"
 
 [project.entry-points."paste.filter_app_factory"]
 session = "cone.sql:make_app"
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools]
-zip-safe = false
-
-[tool.setuptools.package-dir]
-"" = "src"
 
 [tool.zest-releaser]
 create-wheel = true
