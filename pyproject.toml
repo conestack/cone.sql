@@ -39,5 +39,8 @@ Homepage = "http://github.com/conestack/cone.sql"
 [project.entry-points."paste.filter_app_factory"]
 session = "cone.sql:make_app"
 
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cone"]
 [tool.zest-releaser]
 create-wheel = true
