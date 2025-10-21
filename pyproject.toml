@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cone.sql"
+version = "0.9.dev0"
+description = "SQLAlchemy integration for cone.app"
+readme = "README.rst"
+license = {text = "Simplified BSD"}
+authors = [{name = "Cone Contributors", email = "dev@conestack.org"}]
+keywords = ["node", "pyramid", "cone", "web"]
+classifiers = [
+    "Environment :: Web Environment",
+    "Programming Language :: Python",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
+dependencies = [
+    "cone.app>=1.0.3",
+    "node.ext.ugm>=0.9.13",
+    "pyramid_retry",
+    "pyramid_tm",
+    "zope.sqlalchemy",
+]
+
+[project.optional-dependencies]
+ugm = [
+    "cone.ugm",
+]
+test = [
+    "pytest",
+    "zope.pytestlayer",
+    "cone.ugm",
+]
+
+[project.urls]
+Homepage = "http://github.com/conestack/cone.sql"
+
+[project.entry-points."paste.filter_app_factory"]
+session = "cone.sql:make_app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.zest-releaser]
+create-wheel = true

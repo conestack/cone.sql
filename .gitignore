@@ -10,3 +10,4 @@ __pycache__
 /sources/
 /src/cone.sql.egg-info/
 /venv/
+/build
