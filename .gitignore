@@ -1,13 +1,12 @@
-__pycache__
 *.pyc
 /.coverage
 /.mxmake/
 /.venv/
+/build/
 /constraints-mxdev.txt
-/py2/
-/py3/
+/dist/
 /requirements-mxdev.txt
 /sources/
 /src/cone.sql.egg-info/
 /venv/
-/build
+__pycache__
