@@ -38,8 +38,8 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        'cone.app>=1.0.3',
-        'node.ext.ugm>=0.9.13',
+        'cone.app>=1.0.3,<1.1.0',
+        'node.ext.ugm>=0.9.13,<2.0.0',
         'pyramid_retry',
         'pyramid_tm',
         'setuptools',
@@ -47,12 +47,12 @@ setup(
     ],
     extras_require=dict(
         ugm=[
-            'cone.ugm'
+            'cone.ugm<1.1.0'
         ],
         test=[
             'pytest',
             'zope.pytestlayer',
-            'cone.ugm'
+            'cone.ugm<1.1.0'
         ]
     ),
     entry_points="""\

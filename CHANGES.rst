@@ -4,6 +4,9 @@ Changes
 0.9 (unreleased)
 ----------------
 
+- Pin upper versions of dependencies.
+  [rnix]
+
 - Setup Makefile.
   [lenadax]
 
