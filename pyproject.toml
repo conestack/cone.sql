@@ -21,8 +21,8 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 dependencies = [
-    "cone.app>=1.0.3",
-    "node.ext.ugm>=0.9.13",
+    "cone.app>=1.0.99,<2.0.0",
+    "node.ext.ugm>1.99",
     "pyramid_retry",
     "pyramid_tm",
     "zope.sqlalchemy",
@@ -30,12 +30,12 @@ dependencies = [
 
 [project.optional-dependencies]
 ugm = [
-    "cone.ugm",
+    "cone.ugm>1.0.99,<2.0.0",
 ]
 test = [
     "pytest",
     "zope.pytestlayer",
-    "cone.ugm",
+    "cone.ugm>1.0.99,<2.0.0",
 ]
 
 [project.urls]
