@@ -33,9 +33,7 @@ ugm = [
     "cone.ugm>1.0.99,<2.0.0",
 ]
 test = [
-    "pytest",
-    "zope.pytestlayer",
-    "cone.ugm>1.0.99,<2.0.0",
+    "cone.ugm[test]",
 ]
 
 [project.urls]
