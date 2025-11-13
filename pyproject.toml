@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 dependencies = [
-    "cone.app>=1.0.99,<2.0.0",
+    "cone.app>1.0.99,<2.0.0",
     "node.ext.ugm>1.99",
     "pyramid_retry",
     "pyramid_tm",
@@ -42,12 +42,6 @@ Homepage = "http://github.com/conestack/cone.sql"
 
 [project.entry-points."paste.filter_app_factory"]
 session = "cone.sql:make_app"
-
-[tool.hatch.version]
-source = "vcs"
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.hatch.metadata.hooks.fancy-pypi-readme]
 content-type = "text/x-rst"
