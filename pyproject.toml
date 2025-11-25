@@ -55,6 +55,17 @@ path = "CHANGES.rst"
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
 path = "LICENSE.rst"
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/.github/",
+    "/.travis.yml",
+    "/docs",
+    "/js/",
+    "/Makefile",
+    "/mx.ini",
+    "/scripts/",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/cone"]
 
