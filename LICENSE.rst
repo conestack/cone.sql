@@ -2,7 +2,7 @@ License
 =======
 
 Copyright (c) 2017-2021, BlueDynamics Alliance, Austria
-Copyright (c) 2021-2022, Cone Contributors
+Copyright (c) 2021-2025, Cone Contributors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
