@@ -6,11 +6,9 @@
     :target: https://pypi.python.org/pypi/cone.sql
     :alt: Number of PyPI downloads
 
-.. image:: https://travis-ci.org/bluedynamics/cone.sql.svg?branch=master
-    :target: https://travis-ci.org/bluedynamics/cone.sql
-
-.. image:: https://coveralls.io/repos/github/bluedynamics/cone.sql/badge.svg?branch=master
-    :target: https://coveralls.io/github/bluedynamics/cone.sql?branch=master
+.. image:: https://github.com/conestack/cone.sql/actions/workflows/test.yml/badge.svg
+    :target: https://github.com/conestack/cone.sql/actions/workflows/test.yml
+    :alt: Test cone.sql
 
 This package provides SQLAlchemy integration in ``cone.app`` and basic
 application nodes for publishing SQLAlchemy models.
