@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 dependencies = [
-    "cone.app>1.0.99,<2.0.0",
+    "cone.app>1.0.99",
     "node.ext.ugm>1.99",
     "pyramid_retry",
     "pyramid_tm",
