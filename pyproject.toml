@@ -31,7 +31,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ugm = [
-    "cone.ugm>1.0.99,<2.0.0",
+    "cone.ugm>1.0.99",
 ]
 test = [
     "cone.ugm[test]",
