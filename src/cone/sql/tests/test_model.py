@@ -140,6 +140,17 @@ class TestModel(NodeTestCase):
             uuid.UUID('d8f1d964-9f2f-4df5-9f30-c5a90052576d')
         )
 
+        # On PostgreSQL the column is a native ``uuid`` (see
+        # ``load_dialect_impl``) and the driver already returns a ``uuid.UUID``.
+        # It must be passed through untouched - feeding it to ``uuid.UUID()``
+        # raises "'UUID' object has no attribute 'replace'".
+        dialect.name = 'postgresql'
+        parsed = uuid.UUID('d8f1d964-9f2f-4df5-9f30-c5a90052576d')
+        self.assertEqual(guid.process_result_value(parsed, dialect), parsed)
+
+        # ... and the hexstring path keeps working there as well.
+        self.assertEqual(guid.process_result_value(value, dialect), parsed)
+
     @reset_entry_registry
     def test_UUID_as_primary_key(self):
         # Resgister entry

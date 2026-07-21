@@ -4,7 +4,13 @@ Changes
 1.1.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Fix ``GUID.process_result_value`` on PostgreSQL. ``load_dialect_impl`` maps the
+  type to a native ``uuid`` column there, so the driver already returns a
+  ``uuid.UUID`` instance. Feeding it to ``uuid.UUID()`` raised
+  ``AttributeError: 'UUID' object has no attribute 'replace'`` on every read.
+  Values that already are ``uuid.UUID`` are now passed through unchanged, while
+  the CHAR(32) hexstring path used by the other backends keeps working.
+  [rnix]
 
 
 1.1.0 (2026-02-03)

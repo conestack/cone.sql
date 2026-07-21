@@ -70,6 +70,13 @@ class GUID(TypeDecorator):
     def process_result_value(self, value, dialect):
         if value is None:
             return value
+        # On PostgreSQL the column is a native ``uuid`` (see ``load_dialect_impl``) and the
+        # driver already hands back a ``uuid.UUID``. Passing that to ``uuid.UUID()`` fails with
+        # "'UUID' object has no attribute 'replace'". On other backends the CHAR(32) hexstring
+        # arrives instead. Accept both -- ``process_bind_param`` above makes the very same
+        # distinction, it was only missing here.
+        elif isinstance(value, uuid.UUID):
+            return value
         else:
             return uuid.UUID(value)
 
