@@ -189,6 +189,27 @@ class TestVersioningNodes(NodeTestCase):
                 node.attrs[attribute] = 'nope'
 
     @reset_entry_registry
+    def test_object_id_assignable_once(self):
+        # ``UUIDAsName`` derives the node name from an attribute, so the object
+        # id has to be writable before the node reaches its container - but
+        # only while no version exists.
+        container = self.container()
+        object_id = uuid.uuid4()
+
+        node = NoteNode()
+        node.attrs['object_id'] = object_id
+        self.assertEqual(node.attrs['object_id'], object_id)
+        with self.assertRaises(KeyError):
+            node.attrs['object_id'] = uuid.uuid4()
+
+        node.attrs['title'] = 'first'
+        container[str(object_id)] = node
+        node()
+
+        record = self.session.query(NoteRecord).one()
+        self.assertEqual(record.object_id, object_id)
+
+    @reset_entry_registry
     def test_delitem_tombstones(self):
         container = self.container()
         name = str(uuid.uuid4())

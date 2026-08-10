@@ -490,7 +490,15 @@ class VersionedSQLRowNodeAttributes(SQLRowNodeAttributes):
     def __setitem__(self, name, value):
         if name not in self:
             raise KeyError('Unknown attribute: {}'.format(name))
-        if name in VERSION_COLUMNS:
+        if name == 'object_id':
+            # Object identity is assigned once and never changes. It has to be
+            # writable before the first version exists, because a node deriving
+            # its name from it - ``UUIDAsName`` with
+            # ``uuid_attribute_name = 'object_id'`` - has to get a name before
+            # it reaches its container.
+            if self.record.object_id or 'object_id' in self.changed:
+                raise KeyError('Object id is already assigned')
+        elif name in VERSION_COLUMNS:
             raise KeyError('Versioning attribute is read only: {}'.format(name))
         self.changed[name] = value
 
@@ -535,15 +543,22 @@ class VersionedSQLRowStorage(Behavior):
         grow the table without gaining information.
         """
         attrs = self.attrs
-        values = attrs.changed
+        values = dict(attrs.changed)
         if self._new:
+            # The object id may have been assigned explicitly - a node deriving
+            # its name from it needs it before it has a name. Otherwise the
+            # name is the object id.
+            object_id = values.pop('object_id', None)
+            if object_id is None:
+                object_id = uuid.UUID(self.name)
             record = self.record_class.create(
                 self.session,
-                object_id=uuid.UUID(self.name),
+                object_id=object_id,
                 **values
             )
             self._new = False
         elif values:
+            values.pop('object_id', None)
             record = self.record_class.new_version(
                 self.session,
                 self.record.object_id,
