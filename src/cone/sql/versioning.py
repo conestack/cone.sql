@@ -76,10 +76,26 @@ One setup requirement the application owns: **SQLite needs**
 only and buys nothing.
 """
 
+from cone.app.model import AppNode
+from cone.sql import use_tm
 from cone.sql.model import GUID
+from cone.sql.model import SQLRowNodeAttributes
+from cone.sql.model import SQLSession
 from cone.sql.model import UTCDateTime
 from datetime import datetime
 from datetime import timezone
+from node.behaviors import Attributes
+from node.behaviors import DefaultInit
+from node.behaviors import Lifecycle
+from node.behaviors import MappingAdopt
+from node.behaviors import MappingNode
+from node.interfaces import ICallable
+from node.interfaces import IMappingStorage
+from plumber import Behavior
+from plumber import default
+from plumber import finalize
+from plumber import override
+from plumber import plumbing
 from sqlalchemy import and_
 from sqlalchemy import Boolean
 from sqlalchemy import Column
@@ -90,6 +106,7 @@ from sqlalchemy import inspect
 from sqlalchemy import text
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import Session
+from zope.interface import implementer
 import uuid
 
 
@@ -448,6 +465,229 @@ class VersionedMixin:
         apply_version_metadata(record)
         session.add(record)
         return record
+
+
+###############################################################################
+# Application nodes
+###############################################################################
+
+class VersionedSQLRowNodeAttributes(SQLRowNodeAttributes):
+    """Node attributes buffering writes instead of applying them.
+
+    A versioned row is immutable, so ``attrs['title'] = 'x'`` cannot reach the
+    record - the flush guard would reject it, and rightly so. Writes are
+    collected here and turned into a new version when the node is called.
+
+    Reads see pending writes first. Otherwise a form rendering its own input
+    after ``data.write`` would show the persisted value instead of what the
+    user just entered.
+    """
+
+    def __init__(self, name=None, parent=None, record=None):
+        super().__init__(name, parent, record)
+        self.changed = dict()
+
+    def __setitem__(self, name, value):
+        if name not in self:
+            raise KeyError('Unknown attribute: {}'.format(name))
+        if name in VERSION_COLUMNS:
+            raise KeyError('Versioning attribute is read only: {}'.format(name))
+        self.changed[name] = value
+
+    def __getitem__(self, name):
+        if name in self.changed:
+            return self.changed[name]
+        return super().__getitem__(name)
+
+
+@implementer(IMappingStorage, ICallable)
+class VersionedSQLRowStorage(Behavior):
+    """Storage behavior for a single versioned row.
+
+    Writing happens in ``__call__``, because the application contract sets
+    attributes before the node reaches its container and persists afterwards.
+    """
+
+    record_class = default(None)
+    session = default(None)
+
+    @override
+    def __init__(self, name=None, parent=None, record=None):
+        self.__name__ = name
+        self.__parent__ = parent
+        self._new = record is None
+        if record is None:
+            # A value holder for reads until ``__call__`` creates the first
+            # version. It never reaches the session.
+            record = self.record_class()
+        self.record = record
+
+    @override
+    def attributes_factory(self, name, parent):
+        return VersionedSQLRowNodeAttributes(name, parent, self.record)
+
+    @default
+    def _apply(self):
+        """Create the first version or supersede the current one.
+
+        Returns ``True`` if something was written. Calling a node without
+        pending changes writes nothing - versioning unchanged objects would
+        grow the table without gaining information.
+        """
+        attrs = self.attrs
+        values = attrs.changed
+        if self._new:
+            record = self.record_class.create(
+                self.session,
+                object_id=uuid.UUID(self.name),
+                **values
+            )
+            self._new = False
+        elif values:
+            record = self.record_class.new_version(
+                self.session,
+                self.record.object_id,
+                **values
+            )
+        else:
+            return False
+        attrs.changed = dict()
+        self.record = attrs.record = record
+        return True
+
+    @finalize
+    def __setitem__(self, name, value):
+        raise KeyError(name)
+
+    @finalize
+    def __getitem__(self, name):
+        raise KeyError(name)
+
+    @finalize
+    def __delitem__(self, name):  # pragma: no cover
+        raise KeyError(name)
+
+    @finalize
+    def __iter__(self):
+        return iter([])
+
+    @finalize
+    def __call__(self):
+        self._apply()
+        if use_tm():
+            self.session.flush()
+        else:
+            self.session.commit()
+
+
+@implementer(IMappingStorage, ICallable)
+class VersionedSQLTableStorage(Behavior):
+    """Storage behavior for a table of versioned rows.
+
+    The node name is the **object identity**, not the primary key. The primary
+    key changes with every edit; a name bound to it would change every URL and
+    invalidate every stored reference on each save, which is the opposite of
+    what the pattern exists for.
+    """
+
+    record_class = default(None)
+    child_factory = default(None)
+    session = default(None)
+
+    @default
+    @property
+    def _pending(self):
+        # Children put into the container but not yet written. They are
+        # written by whichever call comes first, the child's or the
+        # container's, and the second one finds nothing left to do.
+        if not hasattr(self, '_pending_children'):
+            self._pending_children = list()
+        return self._pending_children
+
+    @default
+    def _convert_object_id(self, name):
+        try:
+            return uuid.UUID(name)
+        except Exception as e:
+            msg = 'Failed to convert node name to object id: {}'.format(e)
+            raise KeyError(msg)
+
+    @finalize
+    def __setitem__(self, name, value):
+        object_id = self._convert_object_id(name)
+        attrs = value.attrs
+        existing = attrs['object_id']
+        if existing and existing != object_id:
+            msg = 'Node name must match object id: {} != {}'.format(
+                object_id,
+                existing
+            )
+            raise KeyError(msg)
+        self._pending.append(value)
+
+    @finalize
+    def __getitem__(self, name):
+        object_id = self._convert_object_id(name)
+        record = self.session.query(self.record_class).filter(
+            self.record_class.object_id == object_id,
+            self.record_class.current()
+        ).first()
+        if record is None:
+            # Traversal expects ``KeyError`` before looking up views. A
+            # tombstoned object lands here as well - it is gone, and the
+            # mapping interface has no third answer.
+            raise KeyError(name)
+        return self.child_factory(name, self, record)
+
+    @finalize
+    def __delitem__(self, name):
+        object_id = self._convert_object_id(name)
+        if name not in self:
+            raise KeyError(name)
+        self.record_class.tombstone(self.session, object_id)
+
+    @finalize
+    def __iter__(self):
+        result = self.session.query(self.record_class.object_id).filter(
+            self.record_class.current()
+        )
+        for object_id in result.all():
+            yield str(object_id[0])
+
+    @finalize
+    def __call__(self):
+        pending, self._pending_children = self._pending, list()
+        for child in pending:
+            child._apply()
+        if use_tm():
+            self.session.flush()
+        else:
+            self.session.commit()
+
+
+@plumbing(
+    AppNode,
+    MappingAdopt,
+    DefaultInit,
+    MappingNode,
+    Lifecycle,
+    SQLSession,
+    VersionedSQLTableStorage)
+class VersionedSQLTableNode(object):
+    """SQL table node for versioned records.
+    """
+
+
+@plumbing(
+    AppNode,
+    Attributes,
+    MappingNode,
+    Lifecycle,
+    SQLSession,
+    VersionedSQLRowStorage)
+class VersionedSQLRowNode(object):
+    """SQL row node for versioned records.
+    """
 
 
 ###############################################################################

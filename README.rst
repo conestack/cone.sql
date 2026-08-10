@@ -159,6 +159,41 @@ registry foreign key to be more than declarative, and application specific
 columns such as a creator are stamped by handlers registered with
 ``version_metadata_handler``.
 
+For publishing versioned records there are node classes mirroring
+``SQLTableNode`` and ``SQLRowNode``:
+
+.. code-block:: python
+
+    from cone.sql.versioning import VersionedSQLRowNode
+    from cone.sql.versioning import VersionedSQLTableNode
+
+    class MyNode(VersionedSQLRowNode):
+        record_class = MyRecord
+
+    class MyContainer(VersionedSQLTableNode):
+        record_class = MyRecord
+        child_factory = MyNode
+
+The node name is the **object identity**, not the primary key. A name bound to
+the primary key would change on every edit and take every URL and every stored
+reference with it, which is the opposite of what the pattern exists for.
+
+Usage follows the same contract as the non versioned nodes:
+
+.. code-block:: python
+
+    node = MyNode()
+    node.attrs['field'] = 'value'
+    container[str(object_id)] = node
+    node()
+
+Attribute writes are buffered and turned into a version when the node is
+called - creating the first one, or superseding the current one. Calling a node
+without pending changes writes nothing. ``__delitem__`` writes a tombstone
+instead of deleting, and the container lists and resolves current rows only.
+Cascading over dependent objects stays application logic, since only the
+application knows the aggregate.
+
 
 Primary key handling
 --------------------

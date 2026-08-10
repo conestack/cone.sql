@@ -17,6 +17,13 @@ Changes
   do not collide with the application meaning of ``created`` and ``deleted``.
   [rnix]
 
+- Add ``VersionedSQLTableNode`` and ``VersionedSQLRowNode`` for publishing
+  versioned records. The node name is the object identity rather than the
+  primary key, so it survives edits. Attribute writes are buffered and applied
+  as a version when the node is called, ``__delitem__`` writes a tombstone, and
+  the container resolves and lists current rows only.
+  [rnix]
+
 - Add ``UTCDateTime`` column type. Timezone aware, normalized to UTC, naive
   values rejected. PostgreSQL gets ``TIMESTAMPTZ``, SQLite fixed width ISO-8601
   text - SQLite compares text byte by byte, so a variable fraction would make
