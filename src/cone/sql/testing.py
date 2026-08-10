@@ -1,6 +1,4 @@
 from cone import sql
-from cone.app.testing import Security
-from cone.app.ugm import ugm_backend
 from cone.sql import get_session
 from cone.sql import initialize_sql
 from cone.sql import setup_session

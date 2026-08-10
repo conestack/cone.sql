@@ -4,6 +4,30 @@ Changes
 1.1.1 (unreleased)
 ------------------
 
+- Add ``cone.sql.versioning``, providing append-only versioning with tombstones
+  as an opt-in mixin. A change inserts a new row and supersedes its
+  predecessor, a deletion inserts a grave row; the four operations
+  ``create``, ``new_version``, ``tombstone`` and ``resurrect`` are the only
+  write path. Comes with a ``before_flush`` guard rejecting in place mutation
+  and deletion of versioned rows, ``current()``/``as_of()`` filters, a registry
+  mixin providing a foreign key target for object identity, and the partial
+  unique index enforcing at most one current version per object. ``SQLBase``
+  and existing tables are untouched. Columns carry a ``version_`` prefix
+  (``version_created``, ``version_superseded``, ``version_deleted``), so they
+  do not collide with the application meaning of ``created`` and ``deleted``.
+  [rnix]
+
+- Add ``UTCDateTime`` column type. Timezone aware, normalized to UTC, naive
+  values rejected. PostgreSQL gets ``TIMESTAMPTZ``, SQLite fixed width ISO-8601
+  text - SQLite compares text byte by byte, so a variable fraction would make
+  ``ORDER BY`` sort by punctuation rather than by time.
+  [rnix]
+
+- Drop the Python 2 branch behind ``UNICODE_TYPE``, which the supported Python
+  versions cannot reach. The name is kept, ``cone.sql.ugm`` and downstream
+  packages import it. Remove two unused imports from ``cone.sql.testing``.
+  [rnix]
+
 - Fix ``GUID.process_result_value`` on PostgreSQL. ``load_dialect_impl`` maps the
   type to a native ``uuid`` column there, so the driver already returns a
   ``uuid.UUID`` instance. Feeding it to ``uuid.UUID()`` raised

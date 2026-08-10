@@ -1,6 +1,8 @@
 from cone.app.model import AppNode
 from cone.sql import get_session
 from cone.sql import use_tm
+from datetime import datetime
+from datetime import timezone
 from node.behaviors import Attributes
 from node.behaviors import DefaultInit
 from node.behaviors import Lifecycle
@@ -15,6 +17,7 @@ from plumber import finalize
 from plumber import override
 from plumber import plumbing
 from pyramid.threadlocal import get_current_request
+from sqlalchemy import DateTime
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -22,7 +25,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.types import CHAR
 from sqlalchemy.types import TypeDecorator
 from zope.interface import implementer
-import sys
 import uuid
 
 
@@ -30,8 +32,9 @@ import uuid
 # Compat
 ###############################################################################
 
-IS_PY2 = sys.version_info[0] < 3
-UNICODE_TYPE = unicode if IS_PY2 else str
+# Kept as a name because ``cone.sql.ugm`` and downstream packages import it.
+# The package requires Python 3.10, so there is nothing left to switch on.
+UNICODE_TYPE = str
 
 
 ###############################################################################
@@ -79,6 +82,66 @@ class GUID(TypeDecorator):
             return value
         else:
             return uuid.UUID(value)
+
+
+class _SQLiteISODateTime(TypeDecorator):
+    """ISO-8601 text, the SQLite half of ``UTCDateTime``.
+
+    Fixed width rendering on purpose: SQLite compares TEXT byte by byte, so
+    ``ORDER BY`` is only chronological while every value has the same shape.
+    With a variable fraction ``...:33+00:00`` sorts after
+    ``...:33.123456+00:00`` by punctuation rather than by time.
+
+    Never used directly. It is the variant inside ``UTCDateTime``, which
+    guarantees the value arriving here is already normalized to UTC.
+    """
+    impl = String(32)
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        return value.isoformat(timespec='microseconds')
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        return datetime.fromisoformat(value)
+
+
+class UTCDateTime(TypeDecorator):
+    """Timezone aware timestamp, normalized to UTC.
+
+    PostgreSQL gets ``TIMESTAMPTZ``, SQLite ISO-8601 text. The guard sits on
+    the outer decorator so it applies to both backends: on PostgreSQL a naive
+    value would otherwise be read in the server's timezone and silently become
+    a different instant.
+
+    Naive values are rejected rather than assumed to be UTC - once a timestamp
+    has lost the distinction between local time and UTC, nothing downstream can
+    recover it.
+    """
+    impl = DateTime(timezone=True).with_variant(_SQLiteISODateTime(), 'sqlite')
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        if value.tzinfo is None or value.utcoffset() is None:
+            msg = (
+                'Naive datetime {}: timestamps must be timezone aware'
+            ).format(repr(value))
+            raise ValueError(msg)
+        return value.astimezone(timezone.utc)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        if value.tzinfo is None:
+            # Should not happen, both dialects hand back aware values. Treat as
+            # UTC rather than let a naive value escape into application code.
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
 
 ###############################################################################

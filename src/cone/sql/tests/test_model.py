@@ -4,10 +4,15 @@ from cone.sql import get_session
 from cone.sql import SQLBase
 from cone.sql import testing
 from cone.sql import use_tm
+from cone.sql.model import _SQLiteISODateTime
 from cone.sql.model import GUID
 from cone.sql.model import SQLRowNode
 from cone.sql.model import SQLTableNode
 from cone.sql.model import UNICODE_TYPE
+from cone.sql.model import UTCDateTime
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
 from node.tests import NodeTestCase
 from sqlalchemy import Column
 from sqlalchemy import Integer
@@ -150,6 +155,62 @@ class TestModel(NodeTestCase):
 
         # ... and the hexstring path keeps working there as well.
         self.assertEqual(guid.process_result_value(value, dialect), parsed)
+
+    def test_UTCDateTime(self):
+        # Timezone aware timestamp, normalized to UTC
+
+        class DummyDialect(default.DefaultDialect):
+            name = None
+
+        dialect = DummyDialect()
+        dt_type = UTCDateTime()
+
+        dt_type.process_bind_param(None, dialect)
+        dt_type.process_result_value(None, dialect)
+
+        # A naive value is rejected rather than assumed to be UTC. Assuming
+        # would silently turn it into a different instant on PostgreSQL, where
+        # the server timezone applies.
+        with self.assertRaises(ValueError):
+            dt_type.process_bind_param(datetime(2026, 8, 10, 12, 0), dialect)
+
+        # Aware values are normalized, whatever offset they arrive with.
+        vienna = timezone(timedelta(hours=2))
+        value = datetime(2026, 8, 10, 12, 0, tzinfo=vienna)
+        bound = dt_type.process_bind_param(value, dialect)
+        self.assertEqual(bound.tzinfo, timezone.utc)
+        self.assertEqual(bound.hour, 10)
+
+        # On reading, an aware value is converted and a naive one - which
+        # should not occur - is taken as UTC instead of escaping naive.
+        result = dt_type.process_result_value(value, dialect)
+        self.assertEqual(result.tzinfo, timezone.utc)
+        result = dt_type.process_result_value(
+            datetime(2026, 8, 10, 10, 0),
+            dialect
+        )
+        self.assertEqual(result.tzinfo, timezone.utc)
+
+        # SQLite stores text and compares it byte by byte. The rendering is
+        # therefore fixed width - with a variable fraction a whole second would
+        # sort after the same second plus microseconds.
+        sqlite_type = _SQLiteISODateTime()
+        whole = sqlite_type.process_bind_param(
+            datetime(2026, 8, 10, 10, 0, 33, tzinfo=timezone.utc),
+            dialect
+        )
+        fraction = sqlite_type.process_bind_param(
+            datetime(2026, 8, 10, 10, 0, 33, 123456, tzinfo=timezone.utc),
+            dialect
+        )
+        self.assertEqual(len(whole), len(fraction))
+        self.assertLess(whole, fraction)
+        self.assertEqual(
+            sqlite_type.process_result_value(fraction, dialect),
+            datetime(2026, 8, 10, 10, 0, 33, 123456, tzinfo=timezone.utc)
+        )
+        sqlite_type.process_bind_param(None, dialect)
+        sqlite_type.process_result_value(None, dialect)
 
     @reset_entry_registry
     def test_UUID_as_primary_key(self):

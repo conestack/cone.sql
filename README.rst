@@ -97,6 +97,69 @@ and the related SQLRowNode.
         child_factory = MyNode
 
 
+Append-only versioning
+----------------------
+
+``cone.sql.versioning`` provides revision safe storage as an opt-in mixin.
+Nothing is ever updated or deleted: a change inserts a new row and marks the
+previous one superseded, a deletion inserts a grave row. ``SQLBase`` and
+existing tables are untouched.
+
+.. code-block:: python
+
+    from cone.sql import SQLBase
+    from cone.sql.versioning import VersionedMixin
+    from cone.sql.versioning import VersionRegistryMixin
+    from sqlalchemy import Column
+    from sqlalchemy import String
+
+    class MyRegistryRecord(VersionRegistryMixin, SQLBase):
+        __tablename__ = 'my_registry'
+        code = Column(String, unique=True)
+
+    class MyRecord(VersionedMixin, SQLBase):
+        __tablename__ = 'my_table'
+        registry_class = MyRegistryRecord
+        field = Column(String)
+
+The mixin contributes ``id`` (row identity), ``object_id`` (object identity,
+stable across versions), ``deleted``, ``created`` and ``superseded``, plus
+a partial unique index enforcing at most one current version per object.
+
+The registry is an immutable table with ``object_id`` as primary key. It exists
+because ``object_id`` is not unique in the versioned table and therefore cannot
+serve as a foreign key target. Classes nobody references by object identity can
+omit it.
+
+Four operations are the only write path:
+
+.. code-block:: python
+
+    record = MyRecord.create(session, registry_values=dict(code='a'), field='x')
+    record = MyRecord.new_version(session, record.object_id, field='y')
+    record = MyRecord.tombstone(session, record.object_id)
+    record = MyRecord.resurrect(session, record.object_id, field='z')
+
+Data columns not passed to ``new_version`` are carried over from the
+predecessor. Queries use the filters, never a hand written condition:
+
+.. code-block:: python
+
+    session.query(MyRecord).filter(MyRecord.current())
+    session.query(MyRecord).filter(MyRecord.as_of(timestamp))
+    session.query(MyRecord).filter(MyRecord.gone())
+    MyRecord.history(session, object_id)
+
+A ``before_flush`` guard rejects any UPDATE touching anything but
+``superseded`` and any DELETE on versioned rows, which makes the pattern
+enforceable rather than a convention.
+
+Two things the application owns: SQLite needs ``PRAGMA foreign_keys=ON`` for the
+registry foreign key to be more than declarative, and application specific
+columns such as a creator are stamped by handlers registered with
+``version_metadata_handler``.
+
+
 Primary key handling
 --------------------
 
