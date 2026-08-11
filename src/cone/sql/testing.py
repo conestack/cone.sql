@@ -2,6 +2,7 @@ from cone import sql
 from cone.sql import get_session
 from cone.sql import initialize_sql
 from cone.sql import setup_session
+from cone.sql import SQLBase
 from cone.sql import sql_session_setup
 from cone.ugm import testing
 from sqlalchemy import create_engine
@@ -109,6 +110,17 @@ class SQLLayer(testing.UGMLayer):
         return request
 
     def init_sql(self):
+        # An explicit URL wins over the backend switch. It is how a throwaway
+        # database in a container is reached, which the switch below cannot
+        # express: it assumes a local socket and a fixed database name.
+        # Everything is dropped and recreated, so the URL must never point at
+        # a database anyone cares about.
+        db_url = os.environ.get('CONE_SQL_TEST_DB_URL')
+        if db_url:  # pragma no cover
+            engine = create_engine(db_url, echo=False)
+            SQLBase.metadata.drop_all(engine)
+            self.init_sql_engine(engine)
+            return
         sql_backend = os.environ.get('CONE_SQL_TEST_BACKEND')
         # sqlite memory is default test backend
         if not sql_backend:  # pragma no cover
@@ -125,6 +137,9 @@ class SQLLayer(testing.UGMLayer):
         elif sql_backend == 'postgres':  # pragma no cover
             os.system("dropdb ugm; createdb ugm")
             engine = create_engine("postgresql:///ugm", echo=False)
+        self.init_sql_engine(engine)
+
+    def init_sql_engine(self, engine):
         initialize_sql(engine)
         maker = sessionmaker(bind=engine)
         if sql.session_factory:  # pragma no cover
