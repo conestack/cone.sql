@@ -559,6 +559,20 @@ class VersionedSQLRowStorage(Behavior):
             self._new = False
         elif values:
             values.pop('object_id', None)
+            # Compare against the row, not against the bookkeeping: an
+            # attribute can be assigned its own value, and a version that
+            # differs from its predecessor in nothing is a row without
+            # information. It happens without anyone doing it on purpose -
+            # ``repoze.workflow`` assigns the state attribute again after the
+            # transition callback has already persisted it, and the next call
+            # of the node would write the state a second time.
+            values = {
+                name: value for name, value in values.items()
+                if getattr(self.record, name, None) != value
+            }
+            if not values:
+                attrs.changed = dict()
+                return False
             record = self.record_class.new_version(
                 self.session,
                 self.record.object_id,

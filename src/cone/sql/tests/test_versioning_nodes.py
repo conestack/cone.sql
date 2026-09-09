@@ -164,6 +164,37 @@ class TestVersioningNodes(NodeTestCase):
         self.assertEqual(self.session.query(NoteRecord).count(), 1)
 
     @reset_entry_registry
+    def test_assigning_the_same_value_writes_nothing(self):
+        # The bookkeeping says "changed", the row says otherwise - and a
+        # version that differs from its predecessor in nothing is a row without
+        # information. Reached without anyone doing it on purpose:
+        # ``repoze.workflow`` assigns the state attribute again after the
+        # transition callback has persisted it, so the next call of the node
+        # would write the same state a second time.
+        container = self.container()
+        name = str(uuid.uuid4())
+        self.add_note(container, name, title='first')
+
+        node = container[name]
+        node.attrs['title'] = 'first'
+        node()
+        self.assertEqual(self.session.query(NoteRecord).count(), 1)
+
+    @reset_entry_registry
+    def test_one_changed_value_among_unchanged_ones_still_writes(self):
+        container = self.container()
+        name = str(uuid.uuid4())
+        self.add_note(container, name, title='first', body='kept')
+
+        node = container[name]
+        node.attrs['title'] = 'first'
+        node.attrs['body'] = 'changed'
+        node()
+        self.assertEqual(self.session.query(NoteRecord).count(), 2)
+        self.assertEqual(container[name].attrs['body'], 'changed')
+        self.assertEqual(container[name].attrs['title'], 'first')
+
+    @reset_entry_registry
     def test_written_attribute_is_readable_before_call(self):
         container = self.container()
         name = str(uuid.uuid4())
