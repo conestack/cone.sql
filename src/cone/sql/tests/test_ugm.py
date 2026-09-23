@@ -1,6 +1,8 @@
 from cone.sql import testing
+from cone.sql.ugm import AuthenticationBehavior
 from cone.sql.ugm import Base
 from cone.sql.ugm import Group
+from cone.sql.ugm import PrincipalsBehavior
 from cone.sql.ugm import SQLGroup
 from cone.sql.ugm import SQLGroupAssignment
 from cone.sql.ugm import SQLPrincipal
@@ -9,7 +11,9 @@ from cone.sql.ugm import Ugm
 from cone.sql.ugm import User
 from datetime import datetime
 from datetime import timedelta
+from node.base import BaseNode
 from node.tests import NodeTestCase
+from plumber import plumbing
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
@@ -22,7 +26,7 @@ import unittest
 def temp_database(fn):
     def wrapper(self):
         tempdir = tempfile.mkdtemp()
-        uri = 'sqlite:///{}/test.db'.format(tempdir)
+        uri = f'sqlite:///{tempdir}/test.db'
         engine = create_engine(uri)
         Base.metadata.create_all(engine)
         sm = sessionmaker(bind=engine)
@@ -428,3 +432,186 @@ class TestSqlUgm(NodeTestCase):
             sorted(users['donald'].attrs.keys()),
             ['address', 'phone']
         )
+
+
+def create_ugm(user_attrs=None, group_attrs=None, binary_attrs=None):
+    return Ugm(
+        name='sql_ugm',
+        parent=None,
+        user_attrs=user_attrs or [],
+        group_attrs=group_attrs or [],
+        binary_attrs=binary_attrs or [],
+        log_auth=False,
+        user_expires_attr=None
+    )
+
+
+class TestSqlUgmDetails(NodeTestCase):
+    layer = testing.sql_layer
+
+    def setUp(self):
+        self.layer.new_request()
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_schema_attribute_is_written_to_record_column(self):
+        ugm = create_ugm()
+        user = ugm.users.create('phil')
+        user.attrs['login'] = 'phil@example.com'
+        self.assertEqual(user.record.login, 'phil@example.com')
+        self.assertFalse('login' in user.record.data)
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_attributes_without_configured_attrs_are_inspected(self):
+        ugm = create_ugm()
+        user = ugm.users.create('phil', email='phil@example.com')
+        keys = list(user.attrs.keys())
+        self.assertTrue('login' in keys)
+        self.assertTrue('email' in keys)
+        self.assertFalse('password' in keys)
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLGroup)
+    def test_group_attributes_are_configured_group_attrs(self):
+        ugm = create_ugm(group_attrs=['description'])
+        group = ugm.groups.create('admins', description='Admins')
+        self.assertEqual(list(group.attrs.keys()), ['description'])
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLGroup)
+    @testing.delete_table_records(SQLUser)
+    def test_binary_attrs_are_stored_base64_encoded(self):
+        ugm = create_ugm(binary_attrs=['portrait'])
+        user = ugm.users.create('phil', portrait=b'\x89PNG')
+        self.assertEqual(user.record.data['portrait'], 'iVBORw==')
+        self.assertEqual(
+            ugm.users.search(criteria={'id': 'phil'}, attrlist=['portrait']),
+            [('phil', {'portrait': b'\x89PNG'})]
+        )
+        group = ugm.groups.create('admins', portrait=b'\x89PNG')
+        self.assertEqual(group.record.data['portrait'], 'iVBORw==')
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_search_exact_match_on_data_attribute(self):
+        ugm = create_ugm()
+        ugm.users.create('phil', email='phil@example.com')
+        ugm.users.create('donald', email='phil@example.com.au')
+        self.assertEqual(
+            ugm.users.search(
+                criteria={'email': 'phil@example.com'},
+                exact_match=True
+            ),
+            ['phil']
+        )
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_passwd_fails_for_unknown_user_and_wrong_old_password(self):
+        ugm = create_ugm()
+        users = ugm.users
+        users.create('phil')
+        users.passwd('phil', None, 'secret')
+        with self.assertRaises(ValueError) as arc:
+            users.passwd('donald', None, 'secret')
+        self.assertEqual(
+            str(arc.exception),
+            "User with id 'donald' does not exist."
+        )
+        with self.assertRaises(ValueError) as arc:
+            users.passwd('phil', 'wrong', 'new')
+        self.assertEqual(str(arc.exception), 'Old password does not match.')
+        self.assertTrue(users.authenticate('phil', 'secret'))
+
+    def test_principals_are_added_by_create_only(self):
+        ugm = create_ugm()
+        with self.assertRaises(NotImplementedError) as arc:
+            ugm.users['phil'] = BaseNode()
+        self.assertEqual(
+            str(arc.exception),
+            'users can only be added using the create() method'
+        )
+        with self.assertRaises(NotImplementedError) as arc:
+            ugm.groups['admins'] = BaseNode()
+        self.assertEqual(
+            str(arc.exception),
+            'groups can only be added using the create() method'
+        )
+
+    def test_abstract_behavior_methods_must_be_implemented(self):
+        @plumbing(PrincipalsBehavior)
+        class Principals:
+            pass
+
+        @plumbing(AuthenticationBehavior)
+        class Authentication:
+            pass
+
+        with self.assertRaises(NotImplementedError):
+            Principals().create('phil')
+        with self.assertRaises(NotImplementedError) as arc:
+            Authentication().get_hashed_pw('phil')
+        self.assertEqual(
+            str(arc.exception),
+            'get_hashed_pw(id: str) -> str must be implemented'
+        )
+        with self.assertRaises(NotImplementedError) as arc:
+            Authentication().set_hashed_pw('phil', 'hashed')
+        self.assertEqual(
+            str(arc.exception),
+            'set_hashed_pw(id: str, hpw: str) must be implemented'
+        )
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLGroup)
+    @testing.delete_table_records(SQLUser)
+    def test_ugm_roles_and_containers(self):
+        ugm = create_ugm()
+        user = ugm.users.create('phil')
+        ugm.add_role('manager', user)
+        self.assertEqual(ugm.roles(user), ['manager'])
+        self.assertTrue(ugm['users'] is ugm.users)
+        self.assertTrue(ugm['groups'] is ugm.groups)
+        with self.assertRaises(NotImplementedError) as arc:
+            ugm['users'] = object()
+        self.assertEqual(
+            str(arc.exception),
+            '``__setitem__`` not in cone.sql.ugm.Ugm'
+        )
+        with self.assertRaises(NotImplementedError) as arc:
+            del ugm['users']
+        self.assertEqual(
+            str(arc.exception),
+            '``__delitem__`` not in cone.sql.ugm.Ugm'
+        )
+        self.assertEqual(list(ugm), ['users', 'groups'])
+
+    def test_ugm_invalidate(self):
+        ugm = create_ugm()
+        users = ugm.users
+        groups = ugm.groups
+        ugm.invalidate()
+        self.assertFalse(ugm.users is users)
+        self.assertFalse(ugm.groups is groups)
+        with self.assertRaises(KeyError):
+            ugm.invalidate('inexistent')
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    @testing.use_transaction_manager
+    def test_calling_with_transaction_manager_flushes_only(self):
+        ugm = create_ugm()
+        session = ugm.session
+        # ``flush`` without ``commit`` - a rollback discards the change
+        user = ugm.users.create('phil')
+        user.attrs['email'] = 'phil@example.com'
+        user()
+        ugm.users()
+        ugm()
+        self.assertEqual(
+            session.query(SQLUser).one().data,
+            {'email': 'phil@example.com'}
+        )
+        session.rollback()
+        self.assertEqual(session.query(SQLUser).count(), 0)

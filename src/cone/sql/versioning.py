@@ -206,13 +206,13 @@ def versioning_table_args(cls):
     return (
         # History of one object, and the point in time range check.
         Index(
-            'ix_{}_object_id_version_created'.format(tablename),
+            f'ix_{tablename}_object_id_version_created',
             'object_id',
             'version_created'
         ),
         # Invariant I1.
         Index(
-            'ix_{}_one_current'.format(tablename),
+            f'ix_{tablename}_one_current',
             'object_id',
             unique=True,
             sqlite_where=unsuperseded,
@@ -279,7 +279,7 @@ class VersionedMixin:
         registry_class = cls.registry_class
         if registry_class is None:
             return Column(GUID, nullable=False)
-        target = '{}.object_id'.format(registry_class.__tablename__)
+        target = f'{registry_class.__tablename__}.object_id'
         return Column(GUID, ForeignKey(target), nullable=False)
 
     @declared_attr
@@ -429,11 +429,11 @@ class VersionedMixin:
         """
         current = cls.get_current(session, object_id)
         if current is None:
-            raise UnknownObject('{}: {}'.format(cls.__name__, object_id))
+            raise UnknownObject(f'{cls.__name__}: {object_id}')
         if current.version_deleted and not deleted:
-            raise ObjectIsDeleted('{}: {}'.format(cls.__name__, object_id))
+            raise ObjectIsDeleted(f'{cls.__name__}: {object_id}')
         if not current.version_deleted and deleted:
-            raise ObjectIsNotDeleted('{}: {}'.format(cls.__name__, object_id))
+            raise ObjectIsNotDeleted(f'{cls.__name__}: {object_id}')
         return current
 
     @classmethod
@@ -489,7 +489,7 @@ class VersionedSQLRowNodeAttributes(SQLRowNodeAttributes):
 
     def __setitem__(self, name, value):
         if name not in self:
-            raise KeyError('Unknown attribute: {}'.format(name))
+            raise KeyError(f'Unknown attribute: {name}')
         if name == 'object_id':
             # Object identity is assigned once and never changes. It has to be
             # writable before the first version exists, because a node deriving
@@ -499,7 +499,7 @@ class VersionedSQLRowNodeAttributes(SQLRowNodeAttributes):
             if self.record.object_id or 'object_id' in self.changed:
                 raise KeyError('Object id is already assigned')
         elif name in VERSION_COLUMNS:
-            raise KeyError('Versioning attribute is read only: {}'.format(name))
+            raise KeyError(f'Versioning attribute is read only: {name}')
         self.changed[name] = value
 
     def __getitem__(self, name):
@@ -638,7 +638,7 @@ class VersionedSQLTableStorage(Behavior):
         try:
             return uuid.UUID(name)
         except Exception as e:
-            msg = 'Failed to convert node name to object id: {}'.format(e)
+            msg = f'Failed to convert node name to object id: {e}'
             raise KeyError(msg)
 
     @finalize
@@ -647,10 +647,7 @@ class VersionedSQLTableStorage(Behavior):
         attrs = value.attrs
         existing = attrs['object_id']
         if existing and existing != object_id:
-            msg = 'Node name must match object id: {} != {}'.format(
-                object_id,
-                existing
-            )
+            msg = f'Node name must match object id: {object_id} != {existing}'
             raise KeyError(msg)
         self._pending.append(value)
 
@@ -702,7 +699,7 @@ class VersionedSQLTableStorage(Behavior):
     Lifecycle,
     SQLSession,
     VersionedSQLTableStorage)
-class VersionedSQLTableNode(object):
+class VersionedSQLTableNode:
     """SQL table node for versioned records.
     """
 
@@ -714,7 +711,7 @@ class VersionedSQLTableNode(object):
     Lifecycle,
     SQLSession,
     VersionedSQLRowStorage)
-class VersionedSQLRowNode(object):
+class VersionedSQLRowNode:
     """SQL row node for versioned records.
     """
 
@@ -771,7 +768,6 @@ def forbid_in_place_mutation(session, flush_context, instances):
     for instance in session.deleted:
         if isinstance(instance, (VersionedMixin, VersionRegistryMixin)):
             raise InPlaceMutation(
-                'Versioned rows are never deleted, use tombstone: {}'.format(
-                    type(instance).__name__
-                )
+                'Versioned rows are never deleted, use tombstone: '
+                f'{type(instance).__name__}'
             )

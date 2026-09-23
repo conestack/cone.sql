@@ -39,7 +39,20 @@ def bind_session_listener(session):
 # Test decorators
 ###############################################################################
 
-class delete_table_records(object):
+def use_transaction_manager(fn):
+    """Decorator for tests running with ``CONE_SQL_USE_TM`` enabled.
+    """
+    def wrapper(*a, **kw):
+        previous = os.environ.get('CONE_SQL_USE_TM', '0')
+        os.environ['CONE_SQL_USE_TM'] = '1'
+        try:
+            fn(*a, **kw)
+        finally:
+            os.environ['CONE_SQL_USE_TM'] = previous
+    return wrapper
+
+
+class delete_table_records:
 
     def __init__(self, record_cls):
         self.record_cls = record_cls
@@ -60,7 +73,7 @@ class delete_table_records(object):
 # Test SQL session factory
 ###############################################################################
 
-class TestSQLSessionFactory(object):
+class TestSQLSessionFactory:
 
     def __init__(self, maker):
         self.maker = maker
@@ -89,7 +102,7 @@ class SQLLayer(testing.UGMLayer):
             'sql.binary_attrs': 'portrait'
         }
         settings.update(**kw)
-        super(SQLLayer, self).make_app(**kw)
+        super(SQLLayer, self).make_app(**settings)
 
     def setUp(self, args=None):
         self.tempdir = tempfile.mkdtemp()

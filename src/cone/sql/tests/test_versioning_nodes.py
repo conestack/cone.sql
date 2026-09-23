@@ -2,11 +2,17 @@ from cone.app import get_root
 from cone.app import register_entry
 from cone.sql import SQLBase
 from cone.sql import testing
+from cone.sql.model import SQLSession
 from cone.sql.versioning import VersionedMixin
 from cone.sql.versioning import VersionedSQLRowNode
 from cone.sql.versioning import VersionedSQLTableNode
+from cone.sql.versioning import VersionedSQLTableStorage
 from cone.sql.versioning import VersionRegistryMixin
+from node.behaviors import DefaultInit
+from node.behaviors import MappingAdopt
+from node.behaviors import MappingNode
 from node.tests import NodeTestCase
+from plumber import plumbing
 from sqlalchemy import Column
 from sqlalchemy import String
 import uuid
@@ -294,3 +300,80 @@ class TestVersioningNodes(NodeTestCase):
         existing = container[name]
         with self.assertRaises(KeyError):
             container[str(uuid.uuid4())] = existing
+
+    @reset_entry_registry
+    def test_unknown_attribute_refused(self):
+        container = self.container()
+        name = str(uuid.uuid4())
+        self.add_note(container, name, title='first')
+        node = container[name]
+
+        with self.assertRaises(KeyError) as cm:
+            node.attrs['unknown'] = 'nope'
+        self.assertEqual(cm.exception.args[0], 'Unknown attribute: unknown')
+
+    @reset_entry_registry
+    def test_row_node_has_no_children(self):
+        container = self.container()
+        name = str(uuid.uuid4())
+        node = self.add_note(container, name, title='first')
+
+        with self.assertRaises(KeyError):
+            node['child'] = NoteNode()
+        with self.assertRaises(KeyError):
+            node['child']
+        self.assertEqual(list(node), [])
+
+    @reset_entry_registry
+    def test_delitem_unknown_object_id(self):
+        container = self.container()
+        with self.assertRaises(KeyError):
+            del container[str(uuid.uuid4())]
+
+    def test_storage_delitem_unknown_object_id_without_lifecycle(self):
+        # ``VersionedSQLTableNode`` looks the child up in ``Lifecycle`` before
+        # the storage is asked. A node plumbed without ``Lifecycle`` relies on
+        # the storage raising ``KeyError`` itself.
+        @plumbing(
+            MappingAdopt,
+            DefaultInit,
+            MappingNode,
+            SQLSession,
+            VersionedSQLTableStorage)
+        class PlainNoteContainer:
+            record_class = NoteRecord
+            child_factory = NoteNode
+
+        self.layer.new_request()
+        container = PlainNoteContainer()
+        with self.assertRaises(KeyError):
+            del container[str(uuid.uuid4())]
+
+    @reset_entry_registry
+    @testing.use_transaction_manager
+    def test_node_call_with_transaction_manager_flushes_only(self):
+        # With a transaction manager, committing is the manager's business.
+        # The node flushes, so the version is visible within the transaction
+        # but gone once it is aborted.
+        container = self.container()
+        name = str(uuid.uuid4())
+        self.add_note(container, name, title='first')
+
+        session = self.session
+        self.assertEqual(session.query(NoteRecord).count(), 1)
+        session.rollback()
+        self.assertEqual(session.query(NoteRecord).count(), 0)
+
+    @reset_entry_registry
+    @testing.use_transaction_manager
+    def test_container_call_with_transaction_manager_flushes_only(self):
+        container = self.container()
+        node = NoteNode()
+        node.attrs['title'] = 'first'
+        container[str(uuid.uuid4())] = node
+        container()
+
+        session = self.session
+        self.assertEqual(session.query(NoteRecord).count(), 1)
+        session.rollback()
+        self.assertEqual(session.query(NoteRecord).count(), 0)

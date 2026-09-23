@@ -1,8 +1,39 @@
 Changes
 =======
 
-1.1.1 (unreleased)
+1.2.0 (unreleased)
 ------------------
+
+- Remove ``cone.sql.model.UNICODE_TYPE``. It was an alias for ``str`` left
+  over from Python 2 support. Use ``str`` instead.
+  [rnix]
+
+- Modernise the code ruff flags as outdated: ``u''`` prefixes, ``class
+  X(object)``, ``.format()`` over f-strings. Behaviour unchanged.
+  ``super(Class, self)`` is kept, see ``cone.app``.
+  [rnix]
+
+- Add ``qa.ruff`` domain to Makefile and pin the ruff rule selection in
+  ``pyproject.toml``, ``make check`` runs ``ruff check``.
+  [rnix]
+
+- ``testing.SQLLayer.make_app`` passes its settings to the application. It
+  handed on only the keyword arguments, so the layer never configured ``sql``
+  as UGM backend and the ``cone.ugm`` integration tests ran against the file
+  backend.
+  [rnix]
+
+- Add ``testing.use_transaction_manager`` test decorator.
+  [rnix]
+
+- Fix signatures of ``Ugm.__iter__`` and ``Ugm.__delitem__``. Both took a
+  superfluous argument, so iterating the UGM raised ``TypeError`` and deleting
+  from it raised ``TypeError`` instead of ``NotImplementedError``.
+  [rnix]
+
+- Remove ``UsersBehavior.passwd``. It was never called,
+  ``AuthenticationBehavior.passwd`` overrides it.
+  [rnix]
 
 - Add ``cone.sql.versioning``, providing append-only versioning with tombstones
   as an opt-in mixin. A change inserts a new row and supersedes its

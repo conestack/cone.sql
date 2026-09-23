@@ -8,7 +8,6 @@ from cone.sql.model import _SQLiteISODateTime
 from cone.sql.model import GUID
 from cone.sql.model import SQLRowNode
 from cone.sql.model import SQLTableNode
-from cone.sql.model import UNICODE_TYPE
 from cone.sql.model import UTCDateTime
 from datetime import datetime
 from datetime import timedelta
@@ -224,7 +223,7 @@ class TestModel(NodeTestCase):
         # Add node to container
         node_uid = '6090411e-d249-4dc6-9da1-74172919f1ed'
         node = container[node_uid] = UUIDAsKeyNode()
-        node.attrs['field'] = u'Value'
+        node.attrs['field'] = 'Value'
 
         # Persist data
         container()
@@ -259,7 +258,7 @@ class TestModel(NodeTestCase):
         self.assertEqual(
             sorted(node.attrs.items()),
             [
-                ('field', u'Value'),
+                ('field', 'Value'),
                 ('uid_key', uuid.UUID('6090411e-d249-4dc6-9da1-74172919f1ed'))
             ]
         )
@@ -274,8 +273,8 @@ class TestModel(NodeTestCase):
         container = root['string_as_key_container']
 
         # Add node to container
-        node = container[u'key'] = StringAsKeyNode()
-        node.attrs['field'] = u'Value'
+        node = container['key'] = StringAsKeyNode()
+        node.attrs['field'] = 'Value'
 
         # Persist data
         container()
@@ -283,7 +282,7 @@ class TestModel(NodeTestCase):
         # Query data record using SQLAlchemy directly
         request = self.layer.new_request()
         session = get_session(request)
-        rec = session.get(StringAsPrimaryKeyRecord, u'key')
+        rec = session.get(StringAsPrimaryKeyRecord, 'key')
         self.assertTrue(isinstance(rec, StringAsPrimaryKeyRecord))
 
         # Get children via node API
@@ -297,7 +296,7 @@ class TestModel(NodeTestCase):
         self.assertEqual(container.items()[0][1].name, 'key')
         self.assertEqual(
             sorted(node.attrs.items()),
-            [('field', u'Value'), ('string_key', u'key')]
+            [('field', 'Value'), ('string_key', 'key')]
         )
 
     @reset_entry_registry
@@ -312,7 +311,7 @@ class TestModel(NodeTestCase):
 
         # Add node to container
         node = container['1234'] = IntegerAsKeyNode()
-        node.attrs['field'] = u'Value'
+        node.attrs['field'] = 'Value'
 
         # Persist data
         container()
@@ -334,7 +333,7 @@ class TestModel(NodeTestCase):
         self.assertEqual(container.items()[0][1].name, '1234')
         self.assertEqual(
             sorted(node.attrs.items()),
-            [('field', u'Value'), ('integer_key', 1234)]
+            [('field', 'Value'), ('integer_key', 1234)]
         )
 
     def test_data_type_converters(self):
@@ -347,7 +346,7 @@ class TestModel(NodeTestCase):
         self.assertEqual(converters, [
             (GUID, uuid.UUID),
             (Integer, int),
-            (String, UNICODE_TYPE)
+            (String, str)
         ])
 
     @reset_entry_registry
@@ -411,10 +410,10 @@ class TestModel(NodeTestCase):
         )
 
         # SQL model column values can be accessed and set via ``attrs``
-        child.attrs['field'] = u'Value'
+        child.attrs['field'] = 'Value'
         self.assertEqual(
             sorted(child.attrs.items()),
-            [('field', u'Value'), ('integer_key', 123)]
+            [('field', 'Value'), ('integer_key', 123)]
         )
 
         # SQL model gets persisted on ``__call__``.
@@ -427,11 +426,11 @@ class TestModel(NodeTestCase):
 
         # Override child
         child = IntegerAsKeyNode()
-        child.attrs['field'] = u'Other Value'
+        child.attrs['field'] = 'Other Value'
         container['123'] = child
         self.assertEqual(
             sorted(child.attrs.items()),
-            [('field', u'Other Value'), ('integer_key', 123)]
+            [('field', 'Other Value'), ('integer_key', 123)]
         )
 
         container()
@@ -452,21 +451,21 @@ class TestModel(NodeTestCase):
         # persisted without being hooked up to the tree directly.
         child = IntegerAsKeyNode()
         child.attrs['integer_key'] = 1234
-        child.attrs['field'] = u'Value'
+        child.attrs['field'] = 'Value'
         child()
 
         self.assertEqual(container.keys(), ['1234'])
 
         # Update Child
         child = container['1234']
-        child.attrs['field'] = u'Updated Value'
+        child.attrs['field'] = 'Updated Value'
         child()
 
         request = self.layer.new_request()
         session = get_session(request)
         self.assertEqual(
             session.query(IntegerAsPrimaryKeyRecord).first().field,
-            u'Updated Value'
+            'Updated Value'
         )
 
         # Access inexisting attributes
@@ -589,7 +588,7 @@ class TestModel(NodeTestCase):
         # Test ``sql_session_setup``. The SQL session setup handler is defined
         # in ``cone.sql.testing`` and registers a callback to ``after_flush``
         # event. Patch desired callback reference and test whether it's called.
-        class Callback(object):
+        class Callback:
             session = None
             flush_context = None
 
@@ -603,7 +602,7 @@ class TestModel(NodeTestCase):
         root = get_root()
         container = root['integer_as_key_container']
         node = container['1236'] = IntegerAsKeyNode()
-        node.attrs['field'] = u'Value'
+        node.attrs['field'] = 'Value'
         container()
 
         self.assertTrue(isinstance(callback.session, Session))

@@ -31,7 +31,7 @@ class PrincipalRoleRecord(SQLBase):
     MappingAdopt,
     DefaultInit,
     MappingNode)
-class SQLPrincipalRoles(object):
+class SQLPrincipalRoles:
     """Principal roles from sql.
     """
     child_constraints = None
@@ -108,5 +108,5 @@ class SQLPrincipalACL(PrincipalACL):
     @instance_property
     def principal_roles(self):
         if not IUUID.providedBy(self):
-            raise RuntimeError(u"%s does not implement IUUID" % str(self))
+            raise RuntimeError("%s does not implement IUUID" % str(self))
         return SQLPrincipalRoles(name='principal_roles', parent=self)

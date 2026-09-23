@@ -3,7 +3,6 @@ from cone.sql import use_tm
 from cone.sql.model import GUID
 from cone.sql.model import SQLRowNodeAttributes
 from cone.sql.model import SQLSession
-from cone.sql.model import UNICODE_TYPE
 from datetime import datetime
 from node.behaviors import Attributes
 from node.behaviors import DefaultInit
@@ -347,7 +346,7 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     MappingNode,
     MappingAdopt,
     SQLSession)
-class User(object):
+class User:
     pass
 
 
@@ -399,7 +398,7 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     Attributes,
     MappingNode,
     SQLSession)
-class Group(object):
+class Group:
     pass
 
 
@@ -551,7 +550,7 @@ class AuthenticationBehavior(Behavior):
     @override
     def passwd(self, id, oldpw, newpw):
         if id not in self:
-            raise ValueError(u"User with id '{}' does not exist.".format(id))
+            raise ValueError(f"User with id '{id}' does not exist.")
         if oldpw is not None:
             if not self._chk_pw(oldpw, self.get_hashed_pw(id)):
                 raise ValueError('Old password does not match.')
@@ -563,7 +562,7 @@ class AuthenticationBehavior(Behavior):
     def hash_passwd(self, newpw):
         salt = os.urandom(self.salt_len)
         newpw = newpw.encode(ENCODING) \
-            if isinstance(newpw, UNICODE_TYPE) \
+            if isinstance(newpw, str) \
             else newpw
         hashed = base64.b64encode(self.hash_func(newpw + salt).digest() + salt)
         return hashed.decode()
@@ -573,7 +572,7 @@ class AuthenticationBehavior(Behavior):
         hashed = base64.b64decode(hashed)
         salt = hashed[-self.salt_len:]
         plain = plain.encode(ENCODING) \
-            if isinstance(plain, UNICODE_TYPE) \
+            if isinstance(plain, str) \
             else plain
         return hashed == self.hash_func(plain + salt).digest() + salt
 
@@ -657,10 +656,6 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
         user.record.password = hpw
 
     @default
-    def passwd(self, id, old, new):
-        self[id].passwd(old, new)
-
-    @default
     def on_authenticated(self, id, **kw):
         if self.ugm.log_auth:
             user = self[id]
@@ -683,7 +678,7 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     MappingNode,
     SQLSession,
     DefaultInit)
-class Users(object):
+class Users:
     pass
 
 
@@ -745,7 +740,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     MappingNode,
     SQLSession,
     DefaultInit)
-class Groups(object):
+class Groups:
     pass
 
 
@@ -803,7 +798,7 @@ class UgmBehavior(BaseUgm):
         return getattr(self, k)
 
     @default
-    def __iter__(self, k):
+    def __iter__(self):
         return iter(['users', 'groups'])
 
     @default
@@ -811,7 +806,7 @@ class UgmBehavior(BaseUgm):
         raise NotImplementedError('``__setitem__`` not in cone.sql.ugm.Ugm')
 
     @default
-    def __delitem__(self, k, v):
+    def __delitem__(self, k):
         raise NotImplementedError('``__delitem__`` not in cone.sql.ugm.Ugm')
 
     @default
@@ -833,5 +828,5 @@ class UgmBehavior(BaseUgm):
     UgmBehavior,
     MappingNode,
     SQLSession)
-class Ugm(object):
+class Ugm:
     pass

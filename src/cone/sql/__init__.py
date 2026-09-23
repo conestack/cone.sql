@@ -74,7 +74,7 @@ def initialize_sql(engine):
 # Session Factory
 ###############################################################################
 
-class SQLSessionFactory(object):
+class SQLSessionFactory:
     """SQL session factory.
     """
 
@@ -96,7 +96,7 @@ session_factory = None
 # WSGI
 ###############################################################################
 
-class WSGISQLSession(object):
+class WSGISQLSession:
     """WSGI framework component that opens and closes a SQL session.
 
     Downstream applications will have the session in the environment,
@@ -136,7 +136,7 @@ def initialize_cone_sql(config, global_config, settings):
     """
     # database initialization
     prefix = 'sql.db.'
-    if settings.get('{}url'.format(prefix), None) is None:  # pragma: no cover
+    if settings.get(f'{prefix}url', None) is None:  # pragma: no cover
         return
     if settings.get('ugm.backend') == 'sql':
         # If SQL configured as UGM backend, import ugm module to ensure proper

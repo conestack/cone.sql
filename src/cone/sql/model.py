@@ -29,15 +29,6 @@ import uuid
 
 
 ###############################################################################
-# Compat
-###############################################################################
-
-# Kept as a name because ``cone.sql.ugm`` and downstream packages import it.
-# The package requires Python 3.10, so there is nothing left to switch on.
-UNICODE_TYPE = str
-
-
-###############################################################################
 # SQLAlchemy data types
 ###############################################################################
 
@@ -129,8 +120,9 @@ class UTCDateTime(TypeDecorator):
             return value
         if value.tzinfo is None or value.utcoffset() is None:
             msg = (
-                'Naive datetime {}: timestamps must be timezone aware'
-            ).format(repr(value))
+                f'Naive datetime {value!r}: '
+                'timestamps must be timezone aware'
+            )
             raise ValueError(msg)
         return value.astimezone(timezone.utc)
 
@@ -160,7 +152,7 @@ class SQLTableStorage(Behavior):
     # type
     data_type_converters = default({
         GUID: uuid.UUID,
-        String: UNICODE_TYPE,
+        String: str,
         Integer: int,
     })
 
@@ -183,8 +175,8 @@ class SQLTableStorage(Behavior):
         except Exception as e:
             msg = (
                 'Failed to convert node name to expected primary key '
-                'data type: {}'
-            ).format(e)
+                f'data type: {e}'
+            )
             raise KeyError(msg)
 
     @finalize
@@ -197,8 +189,9 @@ class SQLTableStorage(Behavior):
             attrs[primary_key.name] = primary_key_value
         if primary_key_value != attrs[primary_key.name]:
             msg = (
-                'Node name must match primary key attribute value: {} != {}'
-            ).format(primary_key_value, attrs[primary_key.name])
+                'Node name must match primary key attribute value: '
+                f'{primary_key_value} != {attrs[primary_key.name]}'
+            )
             raise KeyError(msg)
         session = self.session
         query = session.query(self.record_class).filter(
@@ -267,12 +260,12 @@ class SQLRowNodeAttributes(NodeAttributes):
         if name in self:
             setattr(self.record, name, value)
         else:
-            raise KeyError('Unknown attribute: {}'.format(name))
+            raise KeyError(f'Unknown attribute: {name}')
 
     def __getitem__(self, name):
         if name in self:
             return getattr(self.record, name)
-        raise KeyError('Unknown attribute: {}'.format(name))
+        raise KeyError(f'Unknown attribute: {name}')
 
     def __delitem__(self, name):
         raise KeyError('Deleting of attributes not allowed')
@@ -361,7 +354,7 @@ class SQLSession(Behavior):
     Lifecycle,
     SQLSession,
     SQLTableStorage)
-class SQLTableNode(object):
+class SQLTableNode:
     """Basic SQL table providing node.
     """
 
@@ -373,6 +366,6 @@ class SQLTableNode(object):
     Lifecycle,
     SQLSession,
     SQLRowStorage)
-class SQLRowNode(object):
+class SQLRowNode:
     """Basic SQL row providing node.
     """

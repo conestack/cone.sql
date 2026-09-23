@@ -1,8 +1,15 @@
 from cone import sql
 from cone.app import RemoteAddrFilter
+from cone.sql import initialize_cone_sql
+from cone.sql import SqlUGMFactory
+from cone.sql import SQLSessionFactory
 from cone.sql import testing
+from cone.sql.testing import after_flush
 from node.tests import NodeTestCase
 from pyramid.paster import get_app
+from sqlalchemy import create_engine
+from sqlalchemy import event
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 import os
 import shutil
@@ -69,7 +76,7 @@ class TestSQL(NodeTestCase):
         }
 
         # Dummy ``start_response`` callback
-        class StartResponse(object):
+        class StartResponse:
             args = None
 
             def __call__(self, *args):
@@ -88,3 +95,39 @@ class TestSQL(NodeTestCase):
 
         # SQL session has been hooked up to environment
         self.assertTrue(isinstance(environ[sql.session_key], Session))
+
+    def test_initialize_cone_sql(self):
+        orgin_session_factory = sql.session_factory
+        orgin_use_tm = os.environ.get('CONE_SQL_USE_TM', '0')
+        try:
+            initialize_cone_sql(None, {}, {
+                'sql.db.url': 'sqlite:///:memory:',
+                'ugm.backend': 'sql',
+                'pyramid.includes': 'pyramid_tm'
+            })
+            self.assertIsInstance(sql.session_factory, SQLSessionFactory)
+            self.assertFalse(sql.session_factory is orgin_session_factory)
+            self.assertEqual(os.environ['CONE_SQL_USE_TM'], '1')
+        finally:
+            sql.session_factory = orgin_session_factory
+            os.environ['CONE_SQL_USE_TM'] = orgin_use_tm
+
+    def test_ugm_factory_reads_attrs_from_settings_without_cone_ugm(self):
+        factory = SqlUGMFactory({
+            'cone.plugins': 'cone.sql',
+            'sql.user_attrs': 'phone, address',
+            'sql.group_attrs': 'description,',
+            'sql.binary_attrs': 'portrait',
+            'sql.log_auth': 'true'
+        })
+        self.assertEqual(factory.user_attrs, ['phone', 'address'])
+        self.assertEqual(factory.group_attrs, ['description'])
+        self.assertEqual(factory.binary_attrs, ['portrait'])
+        self.assertTrue(factory.log_auth)
+
+    def test_test_session_factory_creates_set_up_session(self):
+        engine = create_engine('sqlite:///:memory:')
+        factory = testing.TestSQLSessionFactory(sessionmaker(bind=engine))
+        session = factory()
+        self.assertIsInstance(session, Session)
+        self.assertTrue(event.contains(session, 'after_flush', after_flush))

@@ -7,6 +7,8 @@ from cone.sql.versioning import ObjectIsNotDeleted
 from cone.sql.versioning import UnknownObject
 from cone.sql.versioning import VersionedMixin
 from cone.sql.versioning import VersionRegistryMixin
+from cone.sql.versioning import _version_metadata_handlers
+from cone.sql.versioning import version_metadata_handler
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
@@ -386,3 +388,61 @@ class TestVersioning(NodeTestCase):
     def test_object_id_is_guid(self):
         self.assertIsInstance(ThingRecord.__table__.c.object_id.type, GUID)
         self.assertIsInstance(ThingRecord.__table__.c.id.type, GUID)
+
+    def test_version_metadata_handler_stamps_every_new_version(self):
+        # Application specific columns - a creator taken from the request
+        # being the typical case - are stamped through a hook, keeping
+        # ``cone.sql`` free of any principal source.
+        def stamp_note(record):
+            record.note = f'stamped {record.title}'
+
+        self.assertIs(version_metadata_handler(stamp_note), stamp_note)
+        try:
+            session = self.session
+            first = ThingRecord.create(session, title='initial')
+            session.flush()
+            second = ThingRecord.new_version(
+                session,
+                first.object_id,
+                title='changed'
+            )
+            session.flush()
+        finally:
+            _version_metadata_handlers.remove(stamp_note)
+
+        self.assertEqual(first.note, 'stamped initial')
+        self.assertEqual(second.note, 'stamped changed')
+
+    def test_registry_mutation_refused(self):
+        # The registry is what external foreign keys point at - it is
+        # immutable as well.
+        session = self.session
+        ThingRecord.create(
+            session,
+            registry_values=dict(code='thing-1'),
+            title='initial'
+        )
+        session.flush()
+        registry = session.query(ThingRegistryRecord).one()
+
+        registry.code = 'thing-2'
+        with self.assertRaises(InPlaceMutation) as cm:
+            session.flush()
+        self.assertIn('Registry rows are immutable', str(cm.exception))
+        self.assertIn('code', str(cm.exception))
+
+    def test_registry_assigned_its_own_value_is_accepted(self):
+        # An assignment is not a change - only changed columns are refused.
+        session = self.session
+        ThingRecord.create(
+            session,
+            registry_values=dict(code='thing-1'),
+            title='initial'
+        )
+        session.flush()
+        registry = session.query(ThingRegistryRecord).one()
+
+        registry.code = 'thing-1'
+        self.assertIn(registry, session.dirty)
+        session.flush()
+        self.assertEqual(registry.code, 'thing-1')
