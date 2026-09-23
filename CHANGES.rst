@@ -26,6 +26,12 @@ Changes
 - Add ``testing.use_transaction_manager`` test decorator.
   [rnix]
 
+- ``cone.sql.testing`` imports ``cone.sql.ugm``. ``SQLLayer`` configures
+  ``sql`` as UGM backend, but created the tables before the UGM tables were
+  known, so a downstream package using the layer failed with ``no such table:
+  principal``.
+  [rnix]
+
 - Fix signatures of ``Ugm.__iter__`` and ``Ugm.__delitem__``. Both took a
   superfluous argument, so iterating the UGM raised ``TypeError`` and deleting
   from it raised ``TypeError`` instead of ``NotImplementedError``.

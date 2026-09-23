@@ -13,6 +13,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 import os
 import shutil
+import subprocess
+import sys
 import tempfile
 
 
@@ -131,3 +133,20 @@ class TestSQL(NodeTestCase):
         session = factory()
         self.assertIsInstance(session, Session)
         self.assertTrue(event.contains(session, 'after_flush', after_flush))
+
+    def test_testing_registers_ugm_tables(self):
+        # ``SQLLayer`` configures ``sql`` as UGM backend and creates the tables
+        # before the application imports ``cone.sql.ugm``. Checked in a fresh
+        # interpreter, since test modules of this package import the module.
+        code = (
+            'from cone.sql import SQLBase\n'
+            'import cone.sql.testing\n'
+            'print("principal" in SQLBase.metadata.tables)\n'
+        )
+        result = subprocess.run(
+            [sys.executable, '-c', code],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        self.assertEqual(result.stdout.strip(), 'True')

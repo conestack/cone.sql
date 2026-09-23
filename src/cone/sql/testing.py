@@ -4,6 +4,10 @@ from cone.sql import initialize_sql
 from cone.sql import setup_session
 from cone.sql import SQLBase
 from cone.sql import sql_session_setup
+# ``SQLLayer`` configures ``sql`` as UGM backend. Its tables must be known
+# before ``init_sql`` creates the tables, which is before the application
+# imports the module.
+from cone.sql import ugm  # noqa
 from cone.ugm import testing
 from sqlalchemy import create_engine
 from sqlalchemy import event
