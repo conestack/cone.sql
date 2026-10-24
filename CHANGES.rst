@@ -1,7 +1,7 @@
 Changes
 =======
 
-1.2.0 (unreleased)
+1.2.0 (2026-10-24)
 ------------------
 
 - Remove ``cone.sql.model.UNICODE_TYPE``. It was an alias for ``str`` left
