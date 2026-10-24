@@ -4,7 +4,7 @@ from cone.app import ugm_backend
 from cone.app.ugm import UGMFactory
 from sqlalchemy import engine_from_config
 from sqlalchemy import MetaData
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from zope.sqlalchemy import register

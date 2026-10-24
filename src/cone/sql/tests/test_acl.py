@@ -7,7 +7,7 @@ from node.base import BaseNode
 from node.interfaces import IUUID
 from node.tests import NodeTestCase
 from plumber import plumbing
-from pyramid.security import Allow
+from pyramid.authorization import Allow
 from zope.interface import implementer
 import uuid as uuid_module
 

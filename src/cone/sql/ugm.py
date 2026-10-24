@@ -4,6 +4,7 @@ from cone.sql.model import GUID
 from cone.sql.model import SQLRowNodeAttributes
 from cone.sql.model import SQLSession
 from datetime import datetime
+from datetime import timezone
 from node.behaviors import Attributes
 from node.behaviors import DefaultInit
 from node.behaviors import MappingAdopt
@@ -266,7 +267,7 @@ class UserBehavior(PrincipalBehavior, BaseUser):
         expires = self.attrs.get(ugm.user_expires_attr)
         if not expires:
             return None
-        return datetime.utcfromtimestamp(expires)
+        return datetime.fromtimestamp(expires, timezone.utc).replace(tzinfo=None)
 
     @override
     @expires.setter
