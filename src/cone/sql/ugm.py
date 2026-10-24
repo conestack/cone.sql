@@ -140,6 +140,12 @@ class PrincipalAttributes(SQLRowNodeAttributes):
             self.record.data[name] = value
             flag_modified(self.record, 'data')
 
+    def __delitem__(self, name):
+        if name in self.schema_attrs:
+            raise KeyError(f'Deleting of schema attribute not allowed: {name}')
+        del self.record.data[name]
+        flag_modified(self.record, 'data')
+
     def __getitem__(self, name):
         value = self.record.get_attribute(name)
         if value and name in self.binary_attrs:

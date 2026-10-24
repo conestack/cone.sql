@@ -465,6 +465,28 @@ class TestSqlUgmDetails(NodeTestCase):
 
     @testing.delete_table_records(SQLPrincipal)
     @testing.delete_table_records(SQLUser)
+    def test_delete_data_attribute(self):
+        ugm = create_ugm()
+        user = ugm.users.create('phil', email='phil@example.com')
+        del user.attrs['email']
+        self.assertFalse('email' in user.record.data)
+        self.assertIsNone(user.attrs['email'])
+        with self.assertRaises(KeyError):
+            del user.attrs['email']
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_delete_schema_attribute_is_not_allowed(self):
+        ugm = create_ugm()
+        user = ugm.users.create('phil')
+        with self.assertRaises(KeyError) as arc:
+            del user.attrs['login']
+        self.assertEqual(
+            str(arc.exception), "'Deleting of schema attribute not allowed: login'"
+        )
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
     def test_attributes_without_configured_attrs_are_inspected(self):
         ugm = create_ugm()
         user = ugm.users.create('phil', email='phil@example.com')

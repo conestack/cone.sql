@@ -4,6 +4,12 @@ Changes
 1.2.1 (unreleased)
 ------------------
 
+- Allow deleting dynamic principal attributes, which are stored in the
+  ``data`` column. Deleting a portrait in cone.ugm failed with
+  ``KeyError: Deleting of attributes not allowed``. Schema attributes still
+  can not be deleted.
+  [rnix]
+
 - Import ``declarative_base`` from ``sqlalchemy.orm`` and replace the
   deprecated ``datetime.utcfromtimestamp``.
   [rnix]
