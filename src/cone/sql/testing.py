@@ -2,8 +2,9 @@ from cone import sql
 from cone.sql import get_session
 from cone.sql import initialize_sql
 from cone.sql import setup_session
-from cone.sql import SQLBase
 from cone.sql import sql_session_setup
+from cone.sql import SQLBase
+
 # ``SQLLayer`` configures ``sql`` as UGM backend. Its tables must be known
 # before ``init_sql`` creates the tables, which is before the application
 # imports the module.
@@ -26,16 +27,14 @@ test_after_flush = None
 
 
 def after_flush(session, flush_context):
-    """Test event listener.
-    """
+    """Test event listener."""
     if test_after_flush is not None:
         test_after_flush(session, flush_context)
 
 
 @sql_session_setup
 def bind_session_listener(session):
-    """Test SQL session setup callback.
-    """
+    """Test SQL session setup callback."""
     event.listen(session, 'after_flush', after_flush)
 
 
@@ -43,9 +42,10 @@ def bind_session_listener(session):
 # Test decorators
 ###############################################################################
 
+
 def use_transaction_manager(fn):
-    """Decorator for tests running with ``CONE_SQL_USE_TM`` enabled.
-    """
+    """Decorator for tests running with ``CONE_SQL_USE_TM`` enabled."""
+
     def wrapper(*a, **kw):
         previous = os.environ.get('CONE_SQL_USE_TM', '0')
         os.environ['CONE_SQL_USE_TM'] = '1'
@@ -53,11 +53,11 @@ def use_transaction_manager(fn):
             fn(*a, **kw)
         finally:
             os.environ['CONE_SQL_USE_TM'] = previous
+
     return wrapper
 
 
 class delete_table_records:
-
     def __init__(self, record_cls):
         self.record_cls = record_cls
 
@@ -70,6 +70,7 @@ class delete_table_records:
                 session = get_session(request)
                 session.query(self.record_cls).delete()
                 session.commit()
+
         return wrapper
 
 
@@ -77,8 +78,8 @@ class delete_table_records:
 # Test SQL session factory
 ###############################################################################
 
-class TestSQLSessionFactory:
 
+class TestSQLSessionFactory:
     def __init__(self, maker):
         self.maker = maker
 
@@ -92,18 +93,15 @@ class TestSQLSessionFactory:
 # Test layer
 ###############################################################################
 
-class SQLLayer(testing.UGMLayer):
 
+class SQLLayer(testing.UGMLayer):
     def make_app(self, **kw):
         settings = {
-            'cone.plugins': '\n'.join([
-                'cone.ugm',
-                'cone.sql'
-            ]),
+            'cone.plugins': '\n'.join(['cone.ugm', 'cone.sql']),
             'ugm.backend': 'sql',
             'ugm.config': testing.ugm_config,
             'ugm.localmanager_config': testing.localmanager_config,
-            'sql.binary_attrs': 'portrait'
+            'sql.binary_attrs': 'portrait',
         }
         settings.update(**kw)
         super(SQLLayer, self).make_app(**settings)
@@ -145,15 +143,15 @@ class SQLLayer(testing.UGMLayer):
         # sqlite persistent in package folder for post mortem analysis
         elif sql_backend == 'sqlite':  # pragma no cover
             curdir = os.path.dirname(__file__)
-            fname = "%s/test.db" % curdir
+            fname = '%s/test.db' % curdir
             if os.path.exists(fname):
                 os.remove(fname)
-            uri = "sqlite:///" + fname
+            uri = 'sqlite:///' + fname
             engine = create_engine(uri)
         # alternatively use postgresql - ditches db before start
         elif sql_backend == 'postgres':  # pragma no cover
-            os.system("dropdb ugm; createdb ugm")
-            engine = create_engine("postgresql:///ugm", echo=False)
+            os.system('dropdb ugm; createdb ugm')
+            engine = create_engine('postgresql:///ugm', echo=False)
         self.init_sql_engine(engine)
 
     def init_sql_engine(self, engine):

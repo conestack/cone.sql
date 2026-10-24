@@ -60,10 +60,10 @@ class TestACL(NodeTestCase):
         self.assertEqual(session.query(PrincipalRoleRecord).count(), 0)
 
         # check __acl__ on node
-        self.assertEqual(node.__acl__, [
-            ('Allow', 'role:editor', ['edit']),
-            ('Allow', 'role:manager', ['manage'])
-        ])
+        self.assertEqual(
+            node.__acl__,
+            [('Allow', 'role:editor', ['edit']), ('Allow', 'role:manager', ['manage'])],
+        )
 
         # Set some local roles for node
         principal_roles['someuser'] = ['manager']
@@ -76,12 +76,11 @@ class TestACL(NodeTestCase):
         # check principal roles via API
         self.assertEqual(
             sorted([_ for _ in principal_roles]),
-            ['group:some_group', 'otheruser', 'someuser']
+            ['group:some_group', 'otheruser', 'someuser'],
         )
         self.assertEqual(principal_roles['someuser'], ['manager'])
         self.assertEqual(
-            sorted(principal_roles['group:some_group']),
-            ['editor', 'manager']
+            sorted(principal_roles['group:some_group']), ['editor', 'manager']
         )
 
         # check __acl__ on node
@@ -115,16 +114,13 @@ class TestACL(NodeTestCase):
 
         # check principal roles via API
         self.assertEqual(
-            sorted(principal_roles['group:some_group']),
-            ['admin', 'manager', 'viewer']
+            sorted(principal_roles['group:some_group']), ['admin', 'manager', 'viewer']
         )
         self.assertEqual(
-            sorted(principal_roles.keys()),
-            ['group:some_group', 'otheruser', 'someuser']
+            sorted(principal_roles.keys()), ['group:some_group', 'otheruser', 'someuser']
         )
         self.assertEqual(
-            sorted(principal_roles['group:some_group']),
-            ['admin', 'manager', 'viewer']
+            sorted(principal_roles['group:some_group']), ['admin', 'manager', 'viewer']
         )
         self.assertEqual(principal_roles['otheruser'], ['editor'])
         self.assertEqual(principal_roles['someuser'], ['manager'])
@@ -141,17 +137,12 @@ class TestACL(NodeTestCase):
 
         # check principal roles via API
         self.assertEqual(
-            sorted(principal_roles.keys()),
-            ['group:some_group', 'otheruser']
+            sorted(principal_roles.keys()), ['group:some_group', 'otheruser']
         )
         self.assertEqual(
-            sorted(principal_roles['group:some_group']),
-            ['editor', 'manager']
+            sorted(principal_roles['group:some_group']), ['editor', 'manager']
         )
-        self.assertEqual(
-            sorted(principal_roles['otheruser']),
-            ['admin', 'editor']
-        )
+        self.assertEqual(sorted(principal_roles['otheruser']), ['admin', 'editor'])
 
         # Delete local roles
         del principal_roles['group:some_group']
@@ -161,21 +152,16 @@ class TestACL(NodeTestCase):
         self.assertEqual(session.query(PrincipalRoleRecord).count(), 7)
 
         # check principal roles via API
-        self.assertEqual(
-            sorted(principal_roles['otheruser']),
-            ['admin', 'editor']
-        )
+        self.assertEqual(sorted(principal_roles['otheruser']), ['admin', 'editor'])
 
         # Check if local roles of first node still sane
         node = SQLPrincipalACLNode()
         principal_roles = node.principal_roles
         self.assertEqual(
-            sorted(principal_roles.keys()),
-            ['group:some_group', 'otheruser', 'someuser']
+            sorted(principal_roles.keys()), ['group:some_group', 'otheruser', 'someuser']
         )
         self.assertEqual(
-            sorted(principal_roles['group:some_group']),
-            ['admin', 'manager', 'viewer']
+            sorted(principal_roles['group:some_group']), ['admin', 'manager', 'viewer']
         )
         self.assertEqual(principal_roles['otheruser'], ['editor'])
         self.assertEqual(principal_roles['someuser'], ['manager'])

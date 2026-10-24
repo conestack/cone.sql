@@ -32,6 +32,7 @@ import uuid
 # SQLAlchemy data types
 ###############################################################################
 
+
 class GUID(TypeDecorator):
     """Platform-independent GUID type.
 
@@ -40,6 +41,7 @@ class GUID(TypeDecorator):
 
     http://docs.sqlalchemy.org/en/rel_0_8/core/types.html#backend-agnostic-guid-type
     """
+
     impl = CHAR
     cache_ok = True
 
@@ -56,10 +58,10 @@ class GUID(TypeDecorator):
             return str(value)
         else:
             if not isinstance(value, uuid.UUID):
-                return "%.32x" % int(uuid.UUID(value))
+                return '%.32x' % int(uuid.UUID(value))
             else:
                 # hexstring
-                return "%.32x" % int(value)
+                return '%.32x' % int(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
@@ -86,6 +88,7 @@ class _SQLiteISODateTime(TypeDecorator):
     Never used directly. It is the variant inside ``UTCDateTime``, which
     guarantees the value arriving here is already normalized to UTC.
     """
+
     impl = String(32)
     cache_ok = True
 
@@ -112,6 +115,7 @@ class UTCDateTime(TypeDecorator):
     has lost the distinction between local time and UTC, nothing downstream can
     recover it.
     """
+
     impl = DateTime(timezone=True).with_variant(_SQLiteISODateTime(), 'sqlite')
     cache_ok = True
 
@@ -119,10 +123,7 @@ class UTCDateTime(TypeDecorator):
         if value is None:
             return value
         if value.tzinfo is None or value.utcoffset() is None:
-            msg = (
-                f'Naive datetime {value!r}: '
-                'timestamps must be timezone aware'
-            )
+            msg = f'Naive datetime {value!r}: timestamps must be timezone aware'
             raise ValueError(msg)
         return value.astimezone(timezone.utc)
 
@@ -140,6 +141,7 @@ class UTCDateTime(TypeDecorator):
 # SQL table storage
 ###############################################################################
 
+
 @implementer(IMappingStorage, ICallable)
 class SQLTableStorage(Behavior):
     # SQL alchemy model class
@@ -150,11 +152,13 @@ class SQLTableStorage(Behavior):
     child_factory = default(None)
     # map SQL alchemy data types to callables converting values to expected
     # type
-    data_type_converters = default({
-        GUID: uuid.UUID,
-        String: str,
-        Integer: int,
-    })
+    data_type_converters = default(
+        {
+            GUID: uuid.UUID,
+            String: str,
+            Integer: int,
+        }
+    )
 
     @default
     @property
@@ -173,10 +177,7 @@ class SQLTableStorage(Behavior):
             primary_key_value = converter(name)
             return primary_key_value
         except Exception as e:
-            msg = (
-                'Failed to convert node name to expected primary key '
-                f'data type: {e}'
-            )
+            msg = f'Failed to convert node name to expected primary key data type: {e}'
             raise KeyError(msg)
 
     @finalize
@@ -195,7 +196,8 @@ class SQLTableStorage(Behavior):
             raise KeyError(msg)
         session = self.session
         query = session.query(self.record_class).filter(
-            getattr(self.record_class, primary_key.name) == primary_key_value)
+            getattr(self.record_class, primary_key.name) == primary_key_value
+        )
         if not session.query(query.exists()).scalar():
             session.add(value.record)
         else:
@@ -246,8 +248,8 @@ class SQLTableStorage(Behavior):
 # SQL row storage
 ###############################################################################
 
-class SQLRowNodeAttributes(NodeAttributes):
 
+class SQLRowNodeAttributes(NodeAttributes):
     def __init__(self, name=None, parent=None, record=None):
         NodeAttributes.__init__(self, name, parent)
         self.record = record
@@ -332,9 +334,9 @@ class SQLRowStorage(Behavior):
 # SQL session provider
 ###############################################################################
 
+
 class SQLSession(Behavior):
-    """Behavior providing SQLAlchemy session from pyramid request.
-    """
+    """Behavior providing SQLAlchemy session from pyramid request."""
 
     @finalize
     @property
@@ -346,6 +348,7 @@ class SQLSession(Behavior):
 # Application node basics
 ###############################################################################
 
+
 @plumbing(
     AppNode,
     MappingAdopt,
@@ -353,19 +356,12 @@ class SQLSession(Behavior):
     MappingNode,
     Lifecycle,
     SQLSession,
-    SQLTableStorage)
+    SQLTableStorage,
+)
 class SQLTableNode:
-    """Basic SQL table providing node.
-    """
+    """Basic SQL table providing node."""
 
 
-@plumbing(
-    AppNode,
-    Attributes,
-    MappingNode,
-    Lifecycle,
-    SQLSession,
-    SQLRowStorage)
+@plumbing(AppNode, Attributes, MappingNode, Lifecycle, SQLSession, SQLRowStorage)
 class SQLRowNode:
-    """Basic SQL row providing node.
-    """
+    """Basic SQL row providing node."""

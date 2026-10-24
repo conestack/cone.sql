@@ -22,6 +22,7 @@ import uuid
 # Test records and nodes
 ###############################################################################
 
+
 class NoteRegistryRecord(VersionRegistryMixin, SQLBase):
     __tablename__ = 'note_registry'
 
@@ -44,8 +45,8 @@ class NoteContainer(VersionedSQLTableNode):
 
 
 def reset_entry_registry(fn):
-    """Decorator for tests using the entry node registry.
-    """
+    """Decorator for tests using the entry node registry."""
+
     def wrapper(*a, **kw):
         root = get_root()
         factories = set(root.factories.keys())
@@ -54,12 +55,14 @@ def reset_entry_registry(fn):
         finally:
             for key in set(root.factories.keys()).difference(factories):
                 del root.factories[key]
+
     return wrapper
 
 
 ###############################################################################
 # Tests
 ###############################################################################
+
 
 class TestVersioningNodes(NodeTestCase):
     layer = testing.sql_layer
@@ -220,8 +223,13 @@ class TestVersioningNodes(NodeTestCase):
         node = container[name]
 
         self.assertIsNotNone(node.attrs['version_created'])
-        for attribute in ['id', 'object_id', 'version_created',
-                          'version_superseded', 'version_deleted']:
+        for attribute in [
+            'id',
+            'object_id',
+            'version_created',
+            'version_superseded',
+            'version_deleted',
+        ]:
             with self.assertRaises(KeyError):
                 node.attrs[attribute] = 'nope'
 
@@ -335,11 +343,8 @@ class TestVersioningNodes(NodeTestCase):
         # the storage is asked. A node plumbed without ``Lifecycle`` relies on
         # the storage raising ``KeyError`` itself.
         @plumbing(
-            MappingAdopt,
-            DefaultInit,
-            MappingNode,
-            SQLSession,
-            VersionedSQLTableStorage)
+            MappingAdopt, DefaultInit, MappingNode, SQLSession, VersionedSQLTableStorage
+        )
         class PlainNoteContainer:
             record_class = NoteRecord
             child_factory = NoteNode

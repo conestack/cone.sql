@@ -114,24 +114,21 @@ import uuid
 # Errors
 ###############################################################################
 
+
 class VersioningError(Exception):
-    """Base for every refusal of the write path.
-    """
+    """Base for every refusal of the write path."""
 
 
 class UnknownObject(VersioningError):
-    """No row exists for that object identity.
-    """
+    """No row exists for that object identity."""
 
 
 class ObjectIsDeleted(VersioningError):
-    """The object is tombstoned - use ``resurrect``.
-    """
+    """The object is tombstoned - use ``resurrect``."""
 
 
 class ObjectIsNotDeleted(VersioningError):
-    """The object is live - use ``new_version``.
-    """
+    """The object is live - use ``new_version``."""
 
 
 class InPlaceMutation(VersioningError):
@@ -163,8 +160,7 @@ def version_metadata_handler(ob):
 
 
 def apply_version_metadata(record):
-    """Call all registered version metadata handlers for ``record``.
-    """
+    """Call all registered version metadata handlers for ``record``."""
     for handler in _version_metadata_handlers:
         handler(record)
 
@@ -175,13 +171,9 @@ def apply_version_metadata(record):
 
 # Columns owned by the pattern. Everything else on a versioned record is a data
 # column and gets carried over to the successor unless overwritten.
-VERSION_COLUMNS = frozenset([
-    'id',
-    'object_id',
-    'version_deleted',
-    'version_created',
-    'version_superseded'
-])
+VERSION_COLUMNS = frozenset(
+    ['id', 'object_id', 'version_deleted', 'version_created', 'version_superseded']
+)
 
 
 def versioning_table_args(cls):
@@ -206,9 +198,7 @@ def versioning_table_args(cls):
     return (
         # History of one object, and the point in time range check.
         Index(
-            f'ix_{tablename}_object_id_version_created',
-            'object_id',
-            'version_created'
+            f'ix_{tablename}_object_id_version_created', 'object_id', 'version_created'
         ),
         # Invariant I1.
         Index(
@@ -216,7 +206,7 @@ def versioning_table_args(cls):
             'object_id',
             unique=True,
             sqlite_where=unsuperseded,
-            postgresql_where=unsuperseded
+            postgresql_where=unsuperseded,
         ),
     )
 
@@ -292,21 +282,13 @@ class VersionedMixin:
 
     @classmethod
     def current(cls):
-        """Filter for the current state - the normal case.
-        """
-        return and_(
-            cls.version_superseded.is_(None),
-            cls.version_deleted.is_(False)
-        )
+        """Filter for the current state - the normal case."""
+        return and_(cls.version_superseded.is_(None), cls.version_deleted.is_(False))
 
     @classmethod
     def gone(cls):
-        """Filter for objects that ceased to exist.
-        """
-        return and_(
-            cls.version_superseded.is_(None),
-            cls.version_deleted.is_(True)
-        )
+        """Filter for objects that ceased to exist."""
+        return and_(cls.version_superseded.is_(None), cls.version_deleted.is_(True))
 
     @classmethod
     def as_of(cls, timestamp):
@@ -321,9 +303,8 @@ class VersionedMixin:
         """
         return and_(
             cls.version_created <= timestamp,
-            cls.version_superseded.is_(None) |
-            (cls.version_superseded > timestamp),
-            cls.version_deleted.is_(False)
+            cls.version_superseded.is_(None) | (cls.version_superseded > timestamp),
+            cls.version_deleted.is_(False),
         )
 
     ###########################################################################
@@ -337,18 +318,20 @@ class VersionedMixin:
         Returns the tombstone row for a gone object - the operations need to
         tell "does not exist" from "ceased to exist".
         """
-        return session.query(cls).filter(
-            cls.object_id == object_id,
-            cls.version_superseded.is_(None)
-        ).first()
+        return (
+            session.query(cls)
+            .filter(cls.object_id == object_id, cls.version_superseded.is_(None))
+            .first()
+        )
 
     @classmethod
     def history(cls, session, object_id):
-        """Return the full history of one object, oldest first.
-        """
-        return session.query(cls).filter(
-            cls.object_id == object_id
-        ).order_by(cls.version_created)
+        """Return the full history of one object, oldest first."""
+        return (
+            session.query(cls)
+            .filter(cls.object_id == object_id)
+            .order_by(cls.version_created)
+        )
 
     ###########################################################################
     # The four operations
@@ -356,18 +339,17 @@ class VersionedMixin:
 
     @classmethod
     def create(cls, session, object_id=None, registry_values=None, **data):
-        """Create a new object and write its first version.
-        """
+        """Create a new object and write its first version."""
         now = datetime.now(timezone.utc)
         if object_id is None:
             object_id = uuid.uuid4()
         registry_class = cls.registry_class
         if registry_class is not None:
-            session.add(registry_class(
-                object_id=object_id,
-                created=now,
-                **(registry_values or {})
-            ))
+            session.add(
+                registry_class(
+                    object_id=object_id, created=now, **(registry_values or {})
+                )
+            )
             # The registry row is the foreign key target and has to exist
             # before the first version references it.
             session.flush()
@@ -460,7 +442,7 @@ class VersionedMixin:
             object_id=object_id,
             version_created=now,
             version_deleted=deleted,
-            **values
+            **values,
         )
         apply_version_metadata(record)
         session.add(record)
@@ -470,6 +452,7 @@ class VersionedMixin:
 ###############################################################################
 # Application nodes
 ###############################################################################
+
 
 class VersionedSQLRowNodeAttributes(SQLRowNodeAttributes):
     """Node attributes buffering writes instead of applying them.
@@ -551,11 +534,7 @@ class VersionedSQLRowStorage(Behavior):
             object_id = values.pop('object_id', None)
             if object_id is None:
                 object_id = uuid.UUID(self.name)
-            record = self.record_class.create(
-                self.session,
-                object_id=object_id,
-                **values
-            )
+            record = self.record_class.create(self.session, object_id=object_id, **values)
             self._new = False
         elif values:
             values.pop('object_id', None)
@@ -567,16 +546,15 @@ class VersionedSQLRowStorage(Behavior):
             # transition callback has already persisted it, and the next call
             # of the node would write the state a second time.
             values = {
-                name: value for name, value in values.items()
+                name: value
+                for name, value in values.items()
                 if getattr(self.record, name, None) != value
             }
             if not values:
                 attrs.changed = dict()
                 return False
             record = self.record_class.new_version(
-                self.session,
-                self.record.object_id,
-                **values
+                self.session, self.record.object_id, **values
             )
         else:
             return False
@@ -654,10 +632,11 @@ class VersionedSQLTableStorage(Behavior):
     @finalize
     def __getitem__(self, name):
         object_id = self._convert_object_id(name)
-        record = self.session.query(self.record_class).filter(
-            self.record_class.object_id == object_id,
-            self.record_class.current()
-        ).first()
+        record = (
+            self.session.query(self.record_class)
+            .filter(self.record_class.object_id == object_id, self.record_class.current())
+            .first()
+        )
         if record is None:
             # Traversal expects ``KeyError`` before looking up views. A
             # tombstoned object lands here as well - it is gone, and the
@@ -698,35 +677,25 @@ class VersionedSQLTableStorage(Behavior):
     MappingNode,
     Lifecycle,
     SQLSession,
-    VersionedSQLTableStorage)
+    VersionedSQLTableStorage,
+)
 class VersionedSQLTableNode:
-    """SQL table node for versioned records.
-    """
+    """SQL table node for versioned records."""
 
 
-@plumbing(
-    AppNode,
-    Attributes,
-    MappingNode,
-    Lifecycle,
-    SQLSession,
-    VersionedSQLRowStorage)
+@plumbing(AppNode, Attributes, MappingNode, Lifecycle, SQLSession, VersionedSQLRowStorage)
 class VersionedSQLRowNode:
-    """SQL row node for versioned records.
-    """
+    """SQL row node for versioned records."""
 
 
 ###############################################################################
 # Mutation guard
 ###############################################################################
 
+
 def _changed_columns(instance):
-    """Return the names of data columns changed on ``instance``.
-    """
-    return [
-        attr.key for attr in inspect(instance).attrs
-        if attr.history.has_changes()
-    ]
+    """Return the names of data columns changed on ``instance``."""
+    return [attr.key for attr in inspect(instance).attrs if attr.history.has_changes()]
 
 
 @event.listens_for(Session, 'before_flush')
@@ -746,23 +715,20 @@ def forbid_in_place_mutation(session, flush_context, instances):
             if changed:
                 raise InPlaceMutation(
                     'Registry rows are immutable: {} {}'.format(
-                        type(instance).__name__,
-                        ', '.join(sorted(changed))
+                        type(instance).__name__, ', '.join(sorted(changed))
                     )
                 )
             continue
         if not isinstance(instance, VersionedMixin):
             continue
         forbidden = [
-            name for name in _changed_columns(instance)
-            if name != 'version_superseded'
+            name for name in _changed_columns(instance) if name != 'version_superseded'
         ]
         if forbidden:
             raise InPlaceMutation(
                 'Versioned rows are immutable, call one of create, '
                 'new_version, tombstone or resurrect instead: {} {}'.format(
-                    type(instance).__name__,
-                    ', '.join(sorted(forbidden))
+                    type(instance).__name__, ', '.join(sorted(forbidden))
                 )
             )
     for instance in session.deleted:

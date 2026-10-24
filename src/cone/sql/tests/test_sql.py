@@ -1,8 +1,8 @@
 from cone import sql
 from cone.app import RemoteAddrFilter
 from cone.sql import initialize_cone_sql
-from cone.sql import SqlUGMFactory
 from cone.sql import SQLSessionFactory
+from cone.sql import SqlUGMFactory
 from cone.sql import testing
 from cone.sql.testing import after_flush
 from node.tests import NodeTestCase
@@ -19,8 +19,8 @@ import tempfile
 
 
 def temp_directory(fn):
-    """Decorator for tests needing a temporary directory.
-    """
+    """Decorator for tests needing a temporary directory."""
+
     def wrapper(*a, **kw):
         tempdir = tempfile.mkdtemp()
         kw['tempdir'] = tempdir
@@ -28,6 +28,7 @@ def temp_directory(fn):
             fn(*a, **kw)
         finally:
             shutil.rmtree(tempdir)
+
     return wrapper
 
 
@@ -72,10 +73,7 @@ class TestSQL(NodeTestCase):
         self.assertTrue(isinstance(wsgi_app, RemoteAddrFilter))
 
         # Dummy WSGI environment
-        environ = {
-            'REQUEST_METHOD': 'GET',
-            'PATH_INFO': '/'
-        }
+        environ = {'REQUEST_METHOD': 'GET', 'PATH_INFO': '/'}
 
         # Dummy ``start_response`` callback
         class StartResponse:
@@ -89,10 +87,7 @@ class TestSQL(NodeTestCase):
         wsgi_app(environ, start_response)
         result = start_response.args
         self.assertEqual(result[0], '200 OK')
-        self.assertEqual(
-            result[1][0],
-            ('Content-Type', 'text/html; charset=UTF-8')
-        )
+        self.assertEqual(result[1][0], ('Content-Type', 'text/html; charset=UTF-8'))
         self.assertEqual(result[1][1][0], 'Content-Length')
 
         # SQL session has been hooked up to environment
@@ -102,11 +97,15 @@ class TestSQL(NodeTestCase):
         orgin_session_factory = sql.session_factory
         orgin_use_tm = os.environ.get('CONE_SQL_USE_TM', '0')
         try:
-            initialize_cone_sql(None, {}, {
-                'sql.db.url': 'sqlite:///:memory:',
-                'ugm.backend': 'sql',
-                'pyramid.includes': 'pyramid_tm'
-            })
+            initialize_cone_sql(
+                None,
+                {},
+                {
+                    'sql.db.url': 'sqlite:///:memory:',
+                    'ugm.backend': 'sql',
+                    'pyramid.includes': 'pyramid_tm',
+                },
+            )
             self.assertIsInstance(sql.session_factory, SQLSessionFactory)
             self.assertFalse(sql.session_factory is orgin_session_factory)
             self.assertEqual(os.environ['CONE_SQL_USE_TM'], '1')
@@ -115,13 +114,15 @@ class TestSQL(NodeTestCase):
             os.environ['CONE_SQL_USE_TM'] = orgin_use_tm
 
     def test_ugm_factory_reads_attrs_from_settings_without_cone_ugm(self):
-        factory = SqlUGMFactory({
-            'cone.plugins': 'cone.sql',
-            'sql.user_attrs': 'phone, address',
-            'sql.group_attrs': 'description,',
-            'sql.binary_attrs': 'portrait',
-            'sql.log_auth': 'true'
-        })
+        factory = SqlUGMFactory(
+            {
+                'cone.plugins': 'cone.sql',
+                'sql.user_attrs': 'phone, address',
+                'sql.group_attrs': 'description,',
+                'sql.binary_attrs': 'portrait',
+                'sql.log_auth': 'true',
+            }
+        )
         self.assertEqual(factory.user_attrs, ['phone', 'address'])
         self.assertEqual(factory.group_attrs, ['description'])
         self.assertEqual(factory.binary_attrs, ['portrait'])
@@ -144,9 +145,6 @@ class TestSQL(NodeTestCase):
             'print("principal" in SQLBase.metadata.tables)\n'
         )
         result = subprocess.run(
-            [sys.executable, '-c', code],
-            capture_output=True,
-            text=True,
-            check=True
+            [sys.executable, '-c', code], capture_output=True, text=True, check=True
         )
         self.assertEqual(result.stdout.strip(), 'True')

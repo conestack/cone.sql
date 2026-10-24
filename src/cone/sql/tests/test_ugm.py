@@ -35,11 +35,11 @@ def temp_database(fn):
             fn(self, session)
         finally:
             shutil.rmtree(tempdir)
+
     return wrapper
 
 
 class TestSqlModel(unittest.TestCase):
-
     @temp_database
     def test_sql_model(self, session):
         for name in ['phil', 'donald', 'dagobert', 'daisy']:
@@ -48,8 +48,7 @@ class TestSqlModel(unittest.TestCase):
 
         users = session.query(SQLUser).all()
         self.assertEqual(
-            sorted([u.id for u in users]),
-            ['dagobert', 'daisy', 'donald', 'phil']
+            sorted([u.id for u in users]), ['dagobert', 'daisy', 'donald', 'phil']
         )
 
         for group in ['admins', 'members', 'editors', 'phil']:
@@ -108,7 +107,7 @@ class TestSqlUgm(NodeTestCase):
             group_attrs=['description'],
             binary_attrs=[],
             log_auth=True,
-            user_expires_attr=None
+            user_expires_attr=None,
         )
         users = ugm.users
         groups = ugm.groups
@@ -123,7 +122,7 @@ class TestSqlUgm(NodeTestCase):
                 id,
                 height=count + 1,
                 email='%s@conestack.org' % id,
-                status='super%s' % (count + 1)
+                status='super%s' % (count + 1),
             )
 
         self.assertTrue('phil' in users)
@@ -143,8 +142,8 @@ class TestSqlUgm(NodeTestCase):
         self.assertNotEqual(users['dagobert'].record.password, None)
 
         self.assertFalse(users.authenticate('zworkb', 'test123'))
-        self.assertFalse(users.authenticate(None, "foo"))
-        self.assertFalse(users.authenticate("foo", None))
+        self.assertFalse(users.authenticate(None, 'foo'))
+        self.assertFalse(users.authenticate('foo', None))
         self.assertFalse(users.authenticate(None, None))
 
         self.assertTrue(users['phil'].authenticate('test123'))
@@ -180,10 +179,7 @@ class TestSqlUgm(NodeTestCase):
         members = groups.create('members', title='the normal ones')
         managers1 = groups['managers']
 
-        self.assertEqual(
-            managers1.record.data['title'],
-            'Masters of the Universe'
-        )
+        self.assertEqual(managers1.record.data['title'], 'Masters of the Universe')
         self.assertTrue(groups.ugm is ugm)
 
         managers.add('phil')
@@ -226,10 +222,7 @@ class TestSqlUgm(NodeTestCase):
         self.assertEqual(groups['members'].roles, ['Member'])
 
         # cumulative roles for the user -> user has all roles by his groups
-        self.assertEqual(
-            sorted(users['phil'].roles),
-            ['Editor', 'Manager', 'Member']
-        )
+        self.assertEqual(sorted(users['phil'].roles), ['Editor', 'Manager', 'Member'])
 
         # get group instances of a user
         self.assertEqual(len(users['phil'].groups), 2)
@@ -238,8 +231,7 @@ class TestSqlUgm(NodeTestCase):
 
         # group_ids shall match group instances
         self.assertEqual(
-            set(users['phil'].group_ids),
-            set([g.id for g in users['phil'].groups])
+            set(users['phil'].group_ids), set([g.id for g in users['phil'].groups])
         )
 
         # delete a group membership
@@ -278,15 +270,17 @@ class TestSqlUgm(NodeTestCase):
         self.assertEqual(r2[0], 'phil')
 
         # search with or
-        r3 = users.search(
-            criteria=dict(
-                status='super1',
-                height=2
-            ),
-            or_search=True
-        )
+        r3 = users.search(criteria=dict(status='super1', height=2), or_search=True)
         self.assertEqual(len(r3), 2)
-        self.assertEqual(set(r3), set(('phil', 'donald',)))
+        self.assertEqual(
+            set(r3),
+            set(
+                (
+                    'phil',
+                    'donald',
+                )
+            ),
+        )
 
         # search with wildcards in dynamic fields
         r4 = users.search(criteria=dict(status='super*'), exact_match=False)
@@ -307,68 +301,81 @@ class TestSqlUgm(NodeTestCase):
 
         # search with attrlist
         r8 = users.search(attrlist=['login', 'height', 'status'])
-        self.assertEqual(sorted(r8), sorted([
-            ('donald', {'height': 2, 'login': None, 'status': 'super2'}),
-            ('dagobert', {'height': 3, 'login': None, 'status': 'super3'}),
-            ('mickey', {'height': 4, 'login': None, 'status': 'super4'}),
-            ('schlumpf', {'height': None, 'login': 'email', 'status': None}),
-            ('schlumpfine', {'height': None, 'login': 'nickname', 'status': None}),
-            ('phil', {'height': 1, 'login': None, 'status': 'super1'})])
+        self.assertEqual(
+            sorted(r8),
+            sorted(
+                [
+                    ('donald', {'height': 2, 'login': None, 'status': 'super2'}),
+                    ('dagobert', {'height': 3, 'login': None, 'status': 'super3'}),
+                    ('mickey', {'height': 4, 'login': None, 'status': 'super4'}),
+                    ('schlumpf', {'height': None, 'login': 'email', 'status': None}),
+                    (
+                        'schlumpfine',
+                        {'height': None, 'login': 'nickname', 'status': None},
+                    ),
+                    ('phil', {'height': 1, 'login': None, 'status': 'super1'}),
+                ]
+            ),
         )
 
         r9 = users.search(attrlist=[])
-        self.assertEqual(sorted(r9), sorted([
-            ('donald', {
-                'email': 'donald@conestack.org',
-                'height': 2,
-                'login': None,
-                'status': 'super2'
-            }), ('dagobert', {
-                'email': 'dagobert@conestack.org',
-                'height': 3,
-                'login': None,
-                'status': 'super3'
-            }), ('mickey', {
-                'email': 'mickey@conestack.org',
-                'height': 4,
-                'login': None,
-                'status': 'super4'
-            }), ('schlumpf', {
-                'email': 'schlumpf@conestack.org',
-                'login': 'email'
-            }), ('schlumpfine', {
-                'login': 'nickname',
-                'nickname': 'schlumpfinchen'
-            }), ('phil', {
-                'email': 'phil@conestack.org',
-                'height': 1,
-                'login': None,
-                'status': 'super1'
-            })
-        ]))
+        self.assertEqual(
+            sorted(r9),
+            sorted(
+                [
+                    (
+                        'donald',
+                        {
+                            'email': 'donald@conestack.org',
+                            'height': 2,
+                            'login': None,
+                            'status': 'super2',
+                        },
+                    ),
+                    (
+                        'dagobert',
+                        {
+                            'email': 'dagobert@conestack.org',
+                            'height': 3,
+                            'login': None,
+                            'status': 'super3',
+                        },
+                    ),
+                    (
+                        'mickey',
+                        {
+                            'email': 'mickey@conestack.org',
+                            'height': 4,
+                            'login': None,
+                            'status': 'super4',
+                        },
+                    ),
+                    ('schlumpf', {'email': 'schlumpf@conestack.org', 'login': 'email'}),
+                    ('schlumpfine', {'login': 'nickname', 'nickname': 'schlumpfinchen'}),
+                    (
+                        'phil',
+                        {
+                            'email': 'phil@conestack.org',
+                            'height': 1,
+                            'login': None,
+                            'status': 'super1',
+                        },
+                    ),
+                ]
+            ),
+        )
 
         # Exact searches with empty result shall throw up
-        self.assertRaises(ValueError, lambda: users.search(
-            exact_match=True,
-            criteria=dict(
-                id='unobtainable'
-            )
-        ))
-
-        r10 = users.search(
-            exact_match=False,
-            criteria=dict(
-                id='unobtainable'
-            )
+        self.assertRaises(
+            ValueError,
+            lambda: users.search(exact_match=True, criteria=dict(id='unobtainable')),
         )
+
+        r10 = users.search(exact_match=False, criteria=dict(id='unobtainable'))
         self.assertEqual(list(r10), [])
 
         r11 = users.search(
-            exact_match=False,
-            criteria=dict(
-                id='unobtainable'
-            ),
-            or_search=True
+            exact_match=False, criteria=dict(id='unobtainable'), or_search=True
         )
         self.assertEqual(list(r11), [])
 
@@ -424,14 +431,9 @@ class TestSqlUgm(NodeTestCase):
         self.assertFalse(ugm.users.authenticate('donald', 'test123'))
 
         ugm.session.commit()
-        donald = ugm.session.query(SQLUser)\
-            .filter(SQLUser.id == 'donald')\
-            .one()
+        donald = ugm.session.query(SQLUser).filter(SQLUser.id == 'donald').one()
         self.assertTrue('expires' in donald.data)
-        self.assertEqual(
-            sorted(users['donald'].attrs.keys()),
-            ['address', 'phone']
-        )
+        self.assertEqual(sorted(users['donald'].attrs.keys()), ['address', 'phone'])
 
 
 def create_ugm(user_attrs=None, group_attrs=None, binary_attrs=None):
@@ -442,7 +444,7 @@ def create_ugm(user_attrs=None, group_attrs=None, binary_attrs=None):
         group_attrs=group_attrs or [],
         binary_attrs=binary_attrs or [],
         log_auth=False,
-        user_expires_attr=None
+        user_expires_attr=None,
     )
 
 
@@ -487,7 +489,7 @@ class TestSqlUgmDetails(NodeTestCase):
         self.assertEqual(user.record.data['portrait'], 'iVBORw==')
         self.assertEqual(
             ugm.users.search(criteria={'id': 'phil'}, attrlist=['portrait']),
-            [('phil', {'portrait': b'\x89PNG'})]
+            [('phil', {'portrait': b'\x89PNG'})],
         )
         group = ugm.groups.create('admins', portrait=b'\x89PNG')
         self.assertEqual(group.record.data['portrait'], 'iVBORw==')
@@ -499,11 +501,8 @@ class TestSqlUgmDetails(NodeTestCase):
         ugm.users.create('phil', email='phil@example.com')
         ugm.users.create('donald', email='phil@example.com.au')
         self.assertEqual(
-            ugm.users.search(
-                criteria={'email': 'phil@example.com'},
-                exact_match=True
-            ),
-            ['phil']
+            ugm.users.search(criteria={'email': 'phil@example.com'}, exact_match=True),
+            ['phil'],
         )
 
     @testing.delete_table_records(SQLPrincipal)
@@ -515,10 +514,7 @@ class TestSqlUgmDetails(NodeTestCase):
         users.passwd('phil', None, 'secret')
         with self.assertRaises(ValueError) as arc:
             users.passwd('donald', None, 'secret')
-        self.assertEqual(
-            str(arc.exception),
-            "User with id 'donald' does not exist."
-        )
+        self.assertEqual(str(arc.exception), "User with id 'donald' does not exist.")
         with self.assertRaises(ValueError) as arc:
             users.passwd('phil', 'wrong', 'new')
         self.assertEqual(str(arc.exception), 'Old password does not match.')
@@ -529,14 +525,12 @@ class TestSqlUgmDetails(NodeTestCase):
         with self.assertRaises(NotImplementedError) as arc:
             ugm.users['phil'] = BaseNode()
         self.assertEqual(
-            str(arc.exception),
-            'users can only be added using the create() method'
+            str(arc.exception), 'users can only be added using the create() method'
         )
         with self.assertRaises(NotImplementedError) as arc:
             ugm.groups['admins'] = BaseNode()
         self.assertEqual(
-            str(arc.exception),
-            'groups can only be added using the create() method'
+            str(arc.exception), 'groups can only be added using the create() method'
         )
 
     def test_abstract_behavior_methods_must_be_implemented(self):
@@ -553,14 +547,12 @@ class TestSqlUgmDetails(NodeTestCase):
         with self.assertRaises(NotImplementedError) as arc:
             Authentication().get_hashed_pw('phil')
         self.assertEqual(
-            str(arc.exception),
-            'get_hashed_pw(id: str) -> str must be implemented'
+            str(arc.exception), 'get_hashed_pw(id: str) -> str must be implemented'
         )
         with self.assertRaises(NotImplementedError) as arc:
             Authentication().set_hashed_pw('phil', 'hashed')
         self.assertEqual(
-            str(arc.exception),
-            'set_hashed_pw(id: str, hpw: str) must be implemented'
+            str(arc.exception), 'set_hashed_pw(id: str, hpw: str) must be implemented'
         )
 
     @testing.delete_table_records(SQLPrincipal)
@@ -575,16 +567,10 @@ class TestSqlUgmDetails(NodeTestCase):
         self.assertTrue(ugm['groups'] is ugm.groups)
         with self.assertRaises(NotImplementedError) as arc:
             ugm['users'] = object()
-        self.assertEqual(
-            str(arc.exception),
-            '``__setitem__`` not in cone.sql.ugm.Ugm'
-        )
+        self.assertEqual(str(arc.exception), '``__setitem__`` not in cone.sql.ugm.Ugm')
         with self.assertRaises(NotImplementedError) as arc:
             del ugm['users']
-        self.assertEqual(
-            str(arc.exception),
-            '``__delitem__`` not in cone.sql.ugm.Ugm'
-        )
+        self.assertEqual(str(arc.exception), '``__delitem__`` not in cone.sql.ugm.Ugm')
         self.assertEqual(list(ugm), ['users', 'groups'])
 
     def test_ugm_invalidate(self):
@@ -609,9 +595,6 @@ class TestSqlUgmDetails(NodeTestCase):
         user()
         ugm.users()
         ugm()
-        self.assertEqual(
-            session.query(SQLUser).one().data,
-            {'email': 'phil@example.com'}
-        )
+        self.assertEqual(session.query(SQLUser).one().data, {'email': 'phil@example.com'})
         session.rollback()
         self.assertEqual(session.query(SQLUser).count(), 0)

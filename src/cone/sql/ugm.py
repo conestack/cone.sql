@@ -20,13 +20,13 @@ from plumber import Behavior
 from plumber import default
 from plumber import override
 from plumber import plumbing
+from sqlalchemy import and_
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy import and_
-from sqlalchemy import inspect
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -51,16 +51,12 @@ SQLiteTypeCompiler.visit_JSONB = SQLiteTypeCompiler.visit_JSON
 # SQLAlchemy model classes
 ###############################################################################
 
+
 class SQLPrincipal(Base):
     __tablename__ = 'principal'
     discriminator = Column(String)
     __mapper_args__ = {'polymorphic_on': discriminator}
-    guid = Column(
-        GUID,
-        default=lambda: str(uuid.uuid4()),
-        index=True,
-        primary_key=True
-    )
+    guid = Column(GUID, default=lambda: str(uuid.uuid4()), index=True, primary_key=True)
     data = Column(JSONB)
     principal_roles = Column(JSONB, default=[])
     created = Column(DateTime, default=datetime.now)
@@ -75,70 +71,53 @@ class SQLPrincipal(Base):
 class SQLGroup(SQLPrincipal):
     __tablename__ = 'group'
     __mapper_args__ = {'polymorphic_identity': 'sqlgroup'}
-    guid = Column(
-        GUID,
-        ForeignKey('principal.guid', deferrable=True),
-        primary_key=True
-    )
+    guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     id = Column(String, unique=True)
     users = association_proxy(
-        'group_assignments',
-        'users',
-        creator=lambda c: SQLGroupAssignment(users=c)
+        'group_assignments', 'users', creator=lambda c: SQLGroupAssignment(users=c)
     )
     group_assignments = relationship(
         'SQLGroupAssignment',
         backref='groups',
         primaryjoin='SQLGroupAssignment.groups_guid == SQLGroup.guid',
-        cascade='save-update, merge, delete, delete-orphan'
+        cascade='save-update, merge, delete, delete-orphan',
     )
 
 
 class SQLGroupAssignment(Base):
     __tablename__ = 'group_assignment'
     groups_guid = Column(
-        GUID,
-        ForeignKey('group.guid', deferrable=True),
-        primary_key=True,
-        nullable=False
+        GUID, ForeignKey('group.guid', deferrable=True), primary_key=True, nullable=False
     )
     users_guid = Column(
-        GUID,
-        ForeignKey('user.guid', deferrable=True),
-        primary_key=True,
-        nullable=False
+        GUID, ForeignKey('user.guid', deferrable=True), primary_key=True, nullable=False
     )
 
 
 class SQLUser(SQLPrincipal):
     __tablename__ = 'user'
     __mapper_args__ = {'polymorphic_identity': 'sqluser'}
-    guid = Column(
-        GUID,
-        ForeignKey('principal.guid', deferrable=True),
-        primary_key=True
-    )
+    guid = Column(GUID, ForeignKey('principal.guid', deferrable=True), primary_key=True)
     login = Column(String)
     id = Column(String, unique=True)
     password = Column(String)
     first_login = Column(DateTime, nullable=True)
     last_login = Column(DateTime, nullable=True)
     groups = association_proxy(
-        'group_assignments',
-        'groups',
-        creator=lambda c: SQLGroupAssignment(groups=c)
+        'group_assignments', 'groups', creator=lambda c: SQLGroupAssignment(groups=c)
     )
     group_assignments = relationship(
         'SQLGroupAssignment',
         backref='users',
         primaryjoin='SQLGroupAssignment.users_guid == SQLUser.guid',
-        cascade='save-update, merge, delete, delete-orphan'
+        cascade='save-update, merge, delete, delete-orphan',
     )
 
 
 ###############################################################################
 # Node classes
 ###############################################################################
+
 
 class PrincipalAttributes(SQLRowNodeAttributes):
     """Consists of field configured in .ini file or ugm.xml and the given SQL
@@ -175,16 +154,17 @@ class PrincipalAttributes(SQLRowNodeAttributes):
 
     @property
     def schema_attrs(self):
-        """Fields that are in the record schema without the technical fields.
-        """
+        """Fields that are in the record schema without the technical fields."""
         tech_attrs = [
-            'group_assignments', 'discriminator', 'guid',
-            'data', 'principal_roles', 'password'
+            'group_assignments',
+            'discriminator',
+            'guid',
+            'data',
+            'principal_roles',
+            'password',
         ]
         schema_attrs = [
-            f for f in
-            inspect(self.record.__class__).attrs.keys()
-            if f not in tech_attrs
+            f for f in inspect(self.record.__class__).attrs.keys() if f not in tech_attrs
         ]
         return schema_attrs
 
@@ -201,21 +181,18 @@ class PrincipalAttributes(SQLRowNodeAttributes):
 
 
 class UserAttributes(PrincipalAttributes):
-
     @property
     def configured_attrs(self):
         return self.ugm.user_attrs
 
 
 class GroupAttributeFactory(PrincipalAttributes):
-
     @property
     def configured_attrs(self):
         return self.ugm.group_attrs
 
 
 class PrincipalBehavior(Behavior):
-
     record = default(None)
     """Reference to sqlalchemy record instance."""
 
@@ -273,7 +250,6 @@ class PrincipalBehavior(Behavior):
 
 
 class UserBehavior(PrincipalBehavior, BaseUser):
-
     @default
     @property
     def expired(self):
@@ -318,12 +294,10 @@ class UserBehavior(PrincipalBehavior, BaseUser):
     @default
     @property
     def roles(self):
-        """Accumulate principal's roles + assigned groups' roles.
-        """
+        """Accumulate principal's roles + assigned groups' roles."""
         my_roles = self.own_roles
         all_roles = itertools.chain(
-            my_roles,
-            *[g.principal_roles for g in self.record.groups]
+            my_roles, *[g.principal_roles for g in self.record.groups]
         )
         return list(set(all_roles))
 
@@ -340,18 +314,12 @@ class UserBehavior(PrincipalBehavior, BaseUser):
         return UserAttributes(name, parent, self.record)
 
 
-@plumbing(
-    UserBehavior,
-    Attributes,
-    MappingNode,
-    MappingAdopt,
-    SQLSession)
+@plumbing(UserBehavior, Attributes, MappingNode, MappingAdopt, SQLSession)
 class User:
     pass
 
 
 class GroupBehavior(PrincipalBehavior, BaseGroup):
-
     @default
     @property
     def member_ids(self):
@@ -383,39 +351,27 @@ class GroupBehavior(PrincipalBehavior, BaseGroup):
     @default
     @property
     def users(self):
-        return [
-            self.ugm.users[id]
-            for id in self.member_ids
-        ]
+        return [self.ugm.users[id] for id in self.member_ids]
 
     @default
     def attributes_factory(self, name, parent):
         return GroupAttributeFactory(name, parent, self.record)
 
 
-@plumbing(
-    GroupBehavior,
-    Attributes,
-    MappingNode,
-    SQLSession)
+@plumbing(GroupBehavior, Attributes, MappingNode, SQLSession)
 class Group:
     pass
 
 
 class PrincipalsBehavior(Behavior):
-
     @default
     @property
     def ugm(self):
         return self.parent
 
     @override
-    def search(self, criteria=None, attrlist=None,
-               exact_match=False, or_search=False):
-        typemap = {
-            str: String,
-            int: Integer
-        }
+    def search(self, criteria=None, attrlist=None, exact_match=False, or_search=False):
+        typemap = {str: String, int: Integer}
         if criteria is None:
             criteria = {}
 
@@ -423,7 +379,8 @@ class PrincipalsBehavior(Behavior):
         cls = self.record_class
         fixed_attrs = ['id', 'login']
         fixed_attr_comparators = [
-            getattr(cls, key) == criteria[key] if exact_match
+            getattr(cls, key) == criteria[key]
+            if exact_match
             else getattr(cls, key).like(('%s' % criteria[key]).replace('*', '%%'))
             for key in fixed_attrs
             if key in criteria
@@ -449,8 +406,7 @@ class PrincipalsBehavior(Behavior):
                 return field_selector(key, value) == literal(value)
 
         dynamic_comparators = [
-            field_comparator(key, value)
-            for (key, value) in criteria.items()
+            field_comparator(key, value) for (key, value) in criteria.items()
         ]
 
         comparators = fixed_attr_comparators + dynamic_comparators
@@ -484,6 +440,7 @@ class PrincipalsBehavior(Behavior):
                 ]
             # empty attrlist, so we take all attributes
             else:
+
                 def merged_attrs(p):
                     # merge fixed attributes and dynamic attributes from ``data``
                     attrs = {k: get_attribute(p, k) for k in fixed_attrs if k != 'id'}
@@ -521,12 +478,12 @@ class AuthenticationBehavior(Behavior):
     - the plumbed class implements get_hashed_pw(id: str) and
       set_hashed_pw(id: str, hpw: str)
     """
+
     salt_len = default(8)
     hash_func = default(hashlib.sha256)
 
     def on_authenticated(self, id, **kw):
-        """Can be overriden to do after-authentication stuff.
-        """
+        """Can be overriden to do after-authentication stuff."""
 
     @override
     def authenticate(self, id=None, pw=None):
@@ -561,19 +518,15 @@ class AuthenticationBehavior(Behavior):
     @default
     def hash_passwd(self, newpw):
         salt = os.urandom(self.salt_len)
-        newpw = newpw.encode(ENCODING) \
-            if isinstance(newpw, str) \
-            else newpw
+        newpw = newpw.encode(ENCODING) if isinstance(newpw, str) else newpw
         hashed = base64.b64encode(self.hash_func(newpw + salt).digest() + salt)
         return hashed.decode()
 
     @default
     def _chk_pw(self, plain, hashed):
         hashed = base64.b64decode(hashed)
-        salt = hashed[-self.salt_len:]
-        plain = plain.encode(ENCODING) \
-            if isinstance(plain, str) \
-            else plain
+        salt = hashed[-self.salt_len :]
+        plain = plain.encode(ENCODING) if isinstance(plain, str) else plain
         return hashed == self.hash_func(plain + salt).digest() + salt
 
     @default
@@ -600,9 +553,11 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
                 # If the key to the json field is variable we need a special
                 # treatment for sqlite
                 field_name = ('$.' + field_name).cast(String)
-            res = self.session.query(SQLUser).filter(
-                SQLUser.data[field_name].cast(String) == searchterm
-            ).one()
+            res = (
+                self.session.query(SQLUser)
+                .filter(SQLUser.data[field_name].cast(String) == searchterm)
+                .one()
+            )
             return res.id
         except NoResultFound:
             # if we dont find a login field, fall back assuming id is login
@@ -677,7 +632,8 @@ class UsersBehavior(PrincipalsBehavior, BaseUsers):
     Attributes,
     MappingNode,
     SQLSession,
-    DefaultInit)
+    DefaultInit,
+)
 class Users:
     pass
 
@@ -698,10 +654,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     @default
     def __getitem__(self, id, default=None):
         try:
-            sqlgroup = self.session\
-                .query(SQLGroup)\
-                .filter(SQLGroup.id == id)\
-                .one()
+            sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
         except NoResultFound:
             raise KeyError(id)
         return Group(parent=self, record=sqlgroup)
@@ -709,10 +662,7 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     @default
     def __delitem__(self, id):
         try:
-            sqlgroup = self.session\
-                .query(SQLGroup)\
-                .filter(SQLGroup.id == id)\
-                .one()
+            sqlgroup = self.session.query(SQLGroup).filter(SQLGroup.id == id).one()
             self.session.delete(sqlgroup)
         except NoResultFound:
             raise KeyError(id)
@@ -739,7 +689,8 @@ class GroupsBehavior(PrincipalsBehavior, BaseGroups):
     Attributes,
     MappingNode,
     SQLSession,
-    DefaultInit)
+    DefaultInit,
+)
 class Groups:
     pass
 
@@ -762,7 +713,7 @@ class UgmBehavior(BaseUgm):
         group_attrs,
         binary_attrs,
         log_auth,
-        user_expires_attr
+        user_expires_attr,
     ):
         self.__name__ = name
         self.__parent__ = parent
@@ -824,9 +775,6 @@ class UgmBehavior(BaseUgm):
         raise KeyError(key)
 
 
-@plumbing(
-    UgmBehavior,
-    MappingNode,
-    SQLSession)
+@plumbing(UgmBehavior, MappingNode, SQLSession)
 class Ugm:
     pass

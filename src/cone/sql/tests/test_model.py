@@ -26,8 +26,8 @@ import uuid
 
 
 def reset_entry_registry(fn):
-    """Decorator for tests using entry node registry
-    """
+    """Decorator for tests using entry node registry"""
+
     def wrapper(*a, **kw):
         root = get_root()
         factories = set(root.factories.keys())
@@ -36,12 +36,13 @@ def reset_entry_registry(fn):
         finally:
             for key in set(root.factories.keys()).difference(factories):
                 del root.factories[key]
+
     return wrapper
 
 
 class UUIDAsPrimaryKeyRecord(SQLBase):
-    """Record with UUID as primary key.
-    """
+    """Record with UUID as primary key."""
+
     __tablename__ = 'uuid_as_primary_key'
     uid_key = Column(GUID, primary_key=True)
     field = Column(String)
@@ -57,8 +58,8 @@ class UUIDAsKeyContainer(SQLTableNode):
 
 
 class StringAsPrimaryKeyRecord(SQLBase):
-    """Record with string as primary key.
-    """
+    """Record with string as primary key."""
+
     __tablename__ = 'string_as_primary_key'
     string_key = Column(String, primary_key=True)
     field = Column(String)
@@ -74,8 +75,8 @@ class StringAsKeyContainer(SQLTableNode):
 
 
 class IntegerAsPrimaryKeyRecord(SQLBase):
-    """Record with integer as primary key.
-    """
+    """Record with integer as primary key."""
+
     __tablename__ = 'integer_as_primary_key'
     integer_key = Column(Integer, primary_key=True)
     field = Column(String)
@@ -121,19 +122,17 @@ class TestModel(NodeTestCase):
         value = uuid.UUID('d8f1d964-9f2f-4df5-9f30-c5a90052576d')
         self.assertEqual(
             guid.process_bind_param(value, dialect),
-            'd8f1d964-9f2f-4df5-9f30-c5a90052576d'
+            'd8f1d964-9f2f-4df5-9f30-c5a90052576d',
         )
 
         dialect.name = 'other'
         self.assertEqual(
-            guid.process_bind_param(value, dialect),
-            'd8f1d9649f2f4df59f30c5a90052576d'
+            guid.process_bind_param(value, dialect), 'd8f1d9649f2f4df59f30c5a90052576d'
         )
 
         value = str(value)
         self.assertEqual(
-            guid.process_bind_param(value, dialect),
-            'd8f1d9649f2f4df59f30c5a90052576d'
+            guid.process_bind_param(value, dialect), 'd8f1d9649f2f4df59f30c5a90052576d'
         )
 
         # Test ``process_result_value``
@@ -141,7 +140,7 @@ class TestModel(NodeTestCase):
 
         self.assertEqual(
             guid.process_result_value(value, dialect),
-            uuid.UUID('d8f1d964-9f2f-4df5-9f30-c5a90052576d')
+            uuid.UUID('d8f1d964-9f2f-4df5-9f30-c5a90052576d'),
         )
 
         # On PostgreSQL the column is a native ``uuid`` (see
@@ -184,10 +183,7 @@ class TestModel(NodeTestCase):
         # should not occur - is taken as UTC instead of escaping naive.
         result = dt_type.process_result_value(value, dialect)
         self.assertEqual(result.tzinfo, timezone.utc)
-        result = dt_type.process_result_value(
-            datetime(2026, 8, 10, 10, 0),
-            dialect
-        )
+        result = dt_type.process_result_value(datetime(2026, 8, 10, 10, 0), dialect)
         self.assertEqual(result.tzinfo, timezone.utc)
 
         # SQLite stores text and compares it byte by byte. The rendering is
@@ -195,18 +191,16 @@ class TestModel(NodeTestCase):
         # sort after the same second plus microseconds.
         sqlite_type = _SQLiteISODateTime()
         whole = sqlite_type.process_bind_param(
-            datetime(2026, 8, 10, 10, 0, 33, tzinfo=timezone.utc),
-            dialect
+            datetime(2026, 8, 10, 10, 0, 33, tzinfo=timezone.utc), dialect
         )
         fraction = sqlite_type.process_bind_param(
-            datetime(2026, 8, 10, 10, 0, 33, 123456, tzinfo=timezone.utc),
-            dialect
+            datetime(2026, 8, 10, 10, 0, 33, 123456, tzinfo=timezone.utc), dialect
         )
         self.assertEqual(len(whole), len(fraction))
         self.assertLess(whole, fraction)
         self.assertEqual(
             sqlite_type.process_result_value(fraction, dialect),
-            datetime(2026, 8, 10, 10, 0, 33, 123456, tzinfo=timezone.utc)
+            datetime(2026, 8, 10, 10, 0, 33, 123456, tzinfo=timezone.utc),
         )
         sqlite_type.process_bind_param(None, dialect)
         sqlite_type.process_result_value(None, dialect)
@@ -237,30 +231,22 @@ class TestModel(NodeTestCase):
         # Get children via node API
         node = container['6090411e-d249-4dc6-9da1-74172919f1ed']
         self.assertTrue(isinstance(node, UUIDAsKeyNode))
-        self.assertEqual(
-            container.keys(),
-            ['6090411e-d249-4dc6-9da1-74172919f1ed']
-        )
+        self.assertEqual(container.keys(), ['6090411e-d249-4dc6-9da1-74172919f1ed'])
         self.assertEqual(len(container.values()), 1)
         self.assertEqual(
-            container.values()[0].name,
-            '6090411e-d249-4dc6-9da1-74172919f1ed'
+            container.values()[0].name, '6090411e-d249-4dc6-9da1-74172919f1ed'
         )
         self.assertEqual(len(container.items()), 1)
+        self.assertEqual(container.items()[0][0], '6090411e-d249-4dc6-9da1-74172919f1ed')
         self.assertEqual(
-            container.items()[0][0],
-            '6090411e-d249-4dc6-9da1-74172919f1ed'
-        )
-        self.assertEqual(
-            container.items()[0][1].name,
-            '6090411e-d249-4dc6-9da1-74172919f1ed'
+            container.items()[0][1].name, '6090411e-d249-4dc6-9da1-74172919f1ed'
         )
         self.assertEqual(
             sorted(node.attrs.items()),
             [
                 ('field', 'Value'),
-                ('uid_key', uuid.UUID('6090411e-d249-4dc6-9da1-74172919f1ed'))
-            ]
+                ('uid_key', uuid.UUID('6090411e-d249-4dc6-9da1-74172919f1ed')),
+            ],
         )
 
     @reset_entry_registry
@@ -295,8 +281,7 @@ class TestModel(NodeTestCase):
         self.assertEqual(container.items()[0][0], 'key')
         self.assertEqual(container.items()[0][1].name, 'key')
         self.assertEqual(
-            sorted(node.attrs.items()),
-            [('field', 'Value'), ('string_key', 'key')]
+            sorted(node.attrs.items()), [('field', 'Value'), ('string_key', 'key')]
         )
 
     @reset_entry_registry
@@ -332,22 +317,16 @@ class TestModel(NodeTestCase):
         self.assertEqual(container.items()[0][0], '1234')
         self.assertEqual(container.items()[0][1].name, '1234')
         self.assertEqual(
-            sorted(node.attrs.items()),
-            [('field', 'Value'), ('integer_key', 1234)]
+            sorted(node.attrs.items()), [('field', 'Value'), ('integer_key', 1234)]
         )
 
     def test_data_type_converters(self):
         # SQLAlchemy data types for primary keys can be extended on
         # ``data_type_converters``
         converters = sorted(
-            SQLTableNode.data_type_converters.items(),
-            key=lambda x: x[0].__name__
+            SQLTableNode.data_type_converters.items(), key=lambda x: x[0].__name__
         )
-        self.assertEqual(converters, [
-            (GUID, uuid.UUID),
-            (Integer, int),
-            (String, str)
-        ])
+        self.assertEqual(converters, [(GUID, uuid.UUID), (Integer, int), (String, str)])
 
     @reset_entry_registry
     @testing.delete_table_records(IntegerAsPrimaryKeyRecord)
@@ -363,19 +342,14 @@ class TestModel(NodeTestCase):
         err = self.expectError(KeyError, container.__getitem__, 'a')
         expected = (
             '"Failed to convert node name to expected primary key data type: '
-            'invalid literal for int() with base 10: \'a\'"'
+            "invalid literal for int() with base 10: 'a'\""
         )
         self.assertEqual(str(err), expected)
 
-        err = self.expectError(
-            KeyError,
-            container.__setitem__,
-            'a',
-            IntegerAsKeyNode()
-        )
+        err = self.expectError(KeyError, container.__setitem__, 'a', IntegerAsKeyNode())
         expected = (
             '"Failed to convert node name to expected primary key data type: '
-            'invalid literal for int() with base 10: \'a\'"'
+            "invalid literal for int() with base 10: 'a'\""
         )
         self.assertEqual(str(err), expected)
 
@@ -383,21 +357,12 @@ class TestModel(NodeTestCase):
         # ``__setitem__`` not matches attribute value, a ``KeyError`` is thrown.
         child = IntegerAsKeyNode()
         child.attrs['integer_key'] = 123
-        err = self.expectError(
-            KeyError,
-            container.__setitem__,
-            '124',
-            child
-        )
+        err = self.expectError(KeyError, container.__setitem__, '124', child)
         expected = "'Node name must match primary key attribute value: 124 != 123'"
         self.assertEqual(str(err), expected)
 
         # Access inexistent child
-        err = self.expectError(
-            KeyError,
-            container.__getitem__,
-            '124'
-        )
+        err = self.expectError(KeyError, container.__getitem__, '124')
         self.assertEqual(str(err), "'124'")
 
         # If primary key attribute not set, it gets automatically set by name
@@ -405,15 +370,13 @@ class TestModel(NodeTestCase):
         child = IntegerAsKeyNode()
         container['123'] = child
         self.assertEqual(
-            sorted(child.attrs.items()),
-            [('field', None), ('integer_key', 123)]
+            sorted(child.attrs.items()), [('field', None), ('integer_key', 123)]
         )
 
         # SQL model column values can be accessed and set via ``attrs``
         child.attrs['field'] = 'Value'
         self.assertEqual(
-            sorted(child.attrs.items()),
-            [('field', 'Value'), ('integer_key', 123)]
+            sorted(child.attrs.items()), [('field', 'Value'), ('integer_key', 123)]
         )
 
         # SQL model gets persisted on ``__call__``.
@@ -429,8 +392,7 @@ class TestModel(NodeTestCase):
         child.attrs['field'] = 'Other Value'
         container['123'] = child
         self.assertEqual(
-            sorted(child.attrs.items()),
-            [('field', 'Other Value'), ('integer_key', 123)]
+            sorted(child.attrs.items()), [('field', 'Other Value'), ('integer_key', 123)]
         )
 
         container()
@@ -464,56 +426,29 @@ class TestModel(NodeTestCase):
         request = self.layer.new_request()
         session = get_session(request)
         self.assertEqual(
-            session.query(IntegerAsPrimaryKeyRecord).first().field,
-            'Updated Value'
+            session.query(IntegerAsPrimaryKeyRecord).first().field, 'Updated Value'
         )
 
         # Access inexisting attributes
-        err = self.expectError(
-            KeyError,
-            child.attrs.__getitem__,
-            'inexistent'
-        )
+        err = self.expectError(KeyError, child.attrs.__getitem__, 'inexistent')
         self.assertEqual(str(err), "'Unknown attribute: inexistent'")
 
-        err = self.expectError(
-            KeyError,
-            child.attrs.__setitem__,
-            'inexistent',
-            'Value'
-        )
+        err = self.expectError(KeyError, child.attrs.__setitem__, 'inexistent', 'Value')
         self.assertEqual(str(err), "'Unknown attribute: inexistent'")
 
         # SQL row node attributes cannot be deleted
-        err = self.expectError(
-            KeyError,
-            child.attrs.__delitem__,
-            'field'
-        )
+        err = self.expectError(KeyError, child.attrs.__delitem__, 'field')
         self.assertEqual(str(err), "'Deleting of attributes not allowed'")
 
         # SQL row node is a leaf thus containment API always raises KeyError
         # and iter returns empty result.
-        err = self.expectError(
-            KeyError,
-            child.__setitem__,
-            'foo',
-            'foo'
-        )
+        err = self.expectError(KeyError, child.__setitem__, 'foo', 'foo')
         self.assertEqual(str(err), "'foo'")
 
-        err = self.expectError(
-            KeyError,
-            child.__getitem__,
-            'foo'
-        )
+        err = self.expectError(KeyError, child.__getitem__, 'foo')
         self.assertEqual(str(err), "'foo'")
 
-        err = self.expectError(
-            KeyError,
-            child.__delitem__,
-            'foo'
-        )
+        err = self.expectError(KeyError, child.__delitem__, 'foo')
         self.assertEqual(str(err), "'foo'")
 
         self.assertEqual(list(iter(child)), [])

@@ -1,14 +1,14 @@
 from cone.sql import SQLBase
 from cone.sql import testing
 from cone.sql.model import GUID
+from cone.sql.versioning import _version_metadata_handlers
 from cone.sql.versioning import InPlaceMutation
 from cone.sql.versioning import ObjectIsDeleted
 from cone.sql.versioning import ObjectIsNotDeleted
 from cone.sql.versioning import UnknownObject
+from cone.sql.versioning import version_metadata_handler
 from cone.sql.versioning import VersionedMixin
 from cone.sql.versioning import VersionRegistryMixin
-from cone.sql.versioning import _version_metadata_handlers
-from cone.sql.versioning import version_metadata_handler
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
@@ -24,17 +24,18 @@ import uuid
 # Test records
 ###############################################################################
 
+
 class ThingRegistryRecord(VersionRegistryMixin, SQLBase):
-    """Registry for ``ThingRecord``, with a natural key.
-    """
+    """Registry for ``ThingRecord``, with a natural key."""
+
     __tablename__ = 'thing_registry'
 
     code = Column(String, unique=True)
 
 
 class ThingRecord(VersionedMixin, SQLBase):
-    """Versioned record used throughout these tests.
-    """
+    """Versioned record used throughout these tests."""
+
     __tablename__ = 'things'
     registry_class = ThingRegistryRecord
 
@@ -43,8 +44,8 @@ class ThingRecord(VersionedMixin, SQLBase):
 
 
 class LeafRecord(VersionedMixin, SQLBase):
-    """Versioned record without registry - nothing references it by object id.
-    """
+    """Versioned record without registry - nothing references it by object id."""
+
     __tablename__ = 'leafs'
 
     title = Column(String)
@@ -53,6 +54,7 @@ class LeafRecord(VersionedMixin, SQLBase):
 ###############################################################################
 # Tests
 ###############################################################################
+
 
 class TestVersioning(NodeTestCase):
     layer = testing.sql_layer
@@ -73,9 +75,7 @@ class TestVersioning(NodeTestCase):
         # for everything referencing the object identity.
         session = self.session
         record = ThingRecord.create(
-            session,
-            registry_values=dict(code='thing-1'),
-            title='initial'
+            session, registry_values=dict(code='thing-1'), title='initial'
         )
         session.flush()
 
@@ -126,9 +126,7 @@ class TestVersioning(NodeTestCase):
 
         # I4 - the timeline per object is gapless and free of overlap: the
         # predecessor ends exactly where the successor begins.
-        predecessor = session.query(ThingRecord).filter(
-            ThingRecord.id == first_id
-        ).one()
+        predecessor = session.query(ThingRecord).filter(ThingRecord.id == first_id).one()
         self.assertEqual(predecessor.version_superseded, second.version_created)
 
         # The predecessor keeps its data. That is the whole point.
@@ -167,16 +165,13 @@ class TestVersioning(NodeTestCase):
         self.assertEqual(grave.title, 'changed')
         self.assertEqual(grave.note, 'kept')
 
-        predecessor = session.query(ThingRecord).filter(
-            ThingRecord.id == second_id
-        ).one()
+        predecessor = session.query(ThingRecord).filter(ThingRecord.id == second_id).one()
         self.assertEqual(predecessor.version_superseded, grave.version_created)
         self.assertFalse(predecessor.version_deleted)
 
         # Gone is not current ...
         self.assertEqual(
-            session.query(ThingRecord).filter(ThingRecord.current()).count(),
-            0
+            session.query(ThingRecord).filter(ThingRecord.current()).count(), 0
         )
         # ... but it is answerable as its own state.
         gone = session.query(ThingRecord).filter(ThingRecord.gone()).one()
@@ -203,24 +198,24 @@ class TestVersioning(NodeTestCase):
         session.flush()
 
         # Before the change the first version was in effect.
-        at_first = session.query(ThingRecord).filter(
-            ThingRecord.as_of(before_change)
-        ).one()
+        at_first = (
+            session.query(ThingRecord).filter(ThingRecord.as_of(before_change)).one()
+        )
         self.assertEqual(at_first.title, 'initial')
 
         # Before the tombstone the object still existed - the deletion of today
         # must not reach backwards into the past.
-        at_second = session.query(ThingRecord).filter(
-            ThingRecord.as_of(before_tombstone)
-        ).one()
+        at_second = (
+            session.query(ThingRecord).filter(ThingRecord.as_of(before_tombstone)).one()
+        )
         self.assertEqual(at_second.title, 'changed')
 
         # Today it is gone.
         self.assertEqual(
-            session.query(ThingRecord).filter(
-                ThingRecord.as_of(datetime.now(timezone.utc))
-            ).count(),
-            0
+            session.query(ThingRecord)
+            .filter(ThingRecord.as_of(datetime.now(timezone.utc)))
+            .count(),
+            0,
         )
 
     def test_resurrect(self):
@@ -242,8 +237,7 @@ class TestVersioning(NodeTestCase):
         self.assertEqual(revived.title, 'back')
         self.assertEqual(session.query(ThingRecord).count(), 3)
         self.assertEqual(
-            session.query(ThingRecord).filter(ThingRecord.current()).count(),
-            1
+            session.query(ThingRecord).filter(ThingRecord.current()).count(), 1
         )
 
     def test_history(self):
@@ -333,12 +327,14 @@ class TestVersioning(NodeTestCase):
         record = ThingRecord.create(session, title='initial')
         session.flush()
 
-        session.add(ThingRecord(
-            id=uuid.uuid4(),
-            object_id=record.object_id,
-            version_created=datetime.now(timezone.utc),
-            title='second live version'
-        ))
+        session.add(
+            ThingRecord(
+                id=uuid.uuid4(),
+                object_id=record.object_id,
+                version_created=datetime.now(timezone.utc),
+                title='second live version',
+            )
+        )
         with self.assertRaises(IntegrityError):
             session.flush()
 
@@ -369,20 +365,14 @@ class TestVersioning(NodeTestCase):
         # The natural key prevents two object identities for one and the same
         # business object.
         session = self.session
-        ThingRecord.create(
-            session,
-            registry_values=dict(code='thing-1'),
-            title='first'
-        )
+        ThingRecord.create(session, registry_values=dict(code='thing-1'), title='first')
         session.flush()
 
         # Raised inside ``create`` already - the registry row is flushed there,
         # because it is the foreign key target of the version about to follow.
         with self.assertRaises(IntegrityError):
             ThingRecord.create(
-                session,
-                registry_values=dict(code='thing-1'),
-                title='duplicate'
+                session, registry_values=dict(code='thing-1'), title='duplicate'
             )
 
     def test_object_id_is_guid(self):
@@ -401,11 +391,7 @@ class TestVersioning(NodeTestCase):
             session = self.session
             first = ThingRecord.create(session, title='initial')
             session.flush()
-            second = ThingRecord.new_version(
-                session,
-                first.object_id,
-                title='changed'
-            )
+            second = ThingRecord.new_version(session, first.object_id, title='changed')
             session.flush()
         finally:
             _version_metadata_handlers.remove(stamp_note)
@@ -417,11 +403,7 @@ class TestVersioning(NodeTestCase):
         # The registry is what external foreign keys point at - it is
         # immutable as well.
         session = self.session
-        ThingRecord.create(
-            session,
-            registry_values=dict(code='thing-1'),
-            title='initial'
-        )
+        ThingRecord.create(session, registry_values=dict(code='thing-1'), title='initial')
         session.flush()
         registry = session.query(ThingRegistryRecord).one()
 
@@ -434,11 +416,7 @@ class TestVersioning(NodeTestCase):
     def test_registry_assigned_its_own_value_is_accepted(self):
         # An assignment is not a change - only changed columns are refused.
         session = self.session
-        ThingRecord.create(
-            session,
-            registry_values=dict(code='thing-1'),
-            title='initial'
-        )
+        ThingRecord.create(session, registry_values=dict(code='thing-1'), title='initial')
         session.flush()
         registry = session.query(ThingRegistryRecord).one()
 
