@@ -1,7 +1,7 @@
 Changes
 =======
 
-1.2.1 (unreleased)
+1.2.1 (2026-10-31)
 ------------------
 
 - Allow deleting dynamic principal attributes, which are stored in the
