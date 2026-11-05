@@ -35,6 +35,7 @@ def temp_directory(fn):
 app_config = """
 [app:my_app]
 use = egg:cone.app#main
+cone.auth_secret = 12345
 
 tm.commit_veto = pyramid_tm.default_commit_veto
 
@@ -73,7 +74,12 @@ class TestSQL(NodeTestCase):
         self.assertTrue(isinstance(wsgi_app, RemoteAddrFilter))
 
         # Dummy WSGI environment
-        environ = {'REQUEST_METHOD': 'GET', 'PATH_INFO': '/'}
+        environ = {
+            'REQUEST_METHOD': 'GET',
+            'PATH_INFO': '/',
+            'HTTP_HOST': 'example.com',
+            'wsgi.url_scheme': 'http',
+        }
 
         # Dummy ``start_response`` callback
         class StartResponse:
