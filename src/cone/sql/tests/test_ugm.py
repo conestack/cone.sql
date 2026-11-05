@@ -1,4 +1,5 @@
 from cone.sql import testing
+from cone.sql import ugm as ugm_module
 from cone.sql.ugm import AuthenticationBehavior
 from cone.sql.ugm import Base
 from cone.sql.ugm import Group
@@ -9,14 +10,22 @@ from cone.sql.ugm import SQLPrincipal
 from cone.sql.ugm import SQLUser
 from cone.sql.ugm import Ugm
 from cone.sql.ugm import User
+from cone.sql.wrap_passwords import main as wrap_passwords_main
+from cone.sql.wrap_passwords import wrap_passwords
 from datetime import datetime
 from datetime import timedelta
 from node.base import BaseNode
+from node.ext.ugm.password import check_password
+from node.ext.ugm.password import hash_password
+from node.ext.ugm.password import wrap_legacy_hash
 from node.tests import NodeTestCase
 from plumber import plumbing
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
+from unittest import mock
+import base64
+import hashlib
 import os
 import shutil
 import tempfile
@@ -436,6 +445,11 @@ class TestSqlUgm(NodeTestCase):
         self.assertEqual(sorted(users['donald'].attrs.keys()), ['address', 'phone'])
 
 
+def legacy_hash(value, salt=b'12345678'):
+    digest = hashlib.sha256(value.encode('utf-8') + salt).digest()
+    return base64.b64encode(digest + salt).decode()
+
+
 def create_ugm(user_attrs=None, group_attrs=None, binary_attrs=None):
     return Ugm(
         name='sql_ugm',
@@ -542,6 +556,114 @@ class TestSqlUgmDetails(NodeTestCase):
         self.assertEqual(str(arc.exception), 'Old password does not match.')
         self.assertTrue(users.authenticate('phil', 'secret'))
 
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_passwd_stores_current_format(self):
+        users = create_ugm().users
+        users.create('phil')
+        users.passwd('phil', None, 'secret')
+        self.assertTrue(users['phil'].record.password.startswith('$scrypt$'))
+        self.assertTrue(users.authenticate('phil', 'secret'))
+        self.assertTrue(users.hash_passwd('secret').startswith('$scrypt$'))
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_passwd_checks_old_password(self):
+        users = create_ugm().users
+        users.create('phil')
+        # no password yet
+        with self.assertRaises(ValueError):
+            users.passwd('phil', 'wrong', 'new')
+        users.set_hashed_pw('phil', legacy_hash('secret'))
+        with self.assertRaises(ValueError):
+            users.passwd('phil', 'wrong', 'new')
+        users.passwd('phil', 'secret', 'new')
+        self.assertTrue(users.authenticate('phil', 'new'))
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_login_replaces_hash_of_former_format(self):
+        users = create_ugm().users
+        users.create('phil')
+        for stored in (legacy_hash('secret'), wrap_legacy_hash(legacy_hash('secret'))):
+            with self.subTest(stored=stored[:16]):
+                users.set_hashed_pw('phil', stored)
+                self.assertTrue(users.authenticate('phil', 'secret'))
+                record = users['phil'].record
+                self.assertTrue(record.password.startswith('$scrypt$'))
+                self.assertTrue(check_password('secret', record.password))
+                self.assertTrue(users.authenticate('phil', 'secret'))
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_failed_login_keeps_hash_of_former_format(self):
+        users = create_ugm().users
+        users.create('phil')
+        stored = legacy_hash('secret')
+        users.set_hashed_pw('phil', stored)
+        self.assertFalse(users.authenticate('phil', 'wrong'))
+        self.assertEqual(users['phil'].record.password, stored)
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_login_with_current_format_changes_nothing(self):
+        users = create_ugm().users
+        users.create('phil')
+        stored = hash_password('secret')
+        users.set_hashed_pw('phil', stored)
+        self.assertTrue(users.authenticate('phil', 'secret'))
+        self.assertEqual(users['phil'].record.password, stored)
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_rejected_login_spends_the_time_of_a_check(self):
+        users = create_ugm().users
+        users.create('phil')
+        with mock.patch.object(
+            ugm_module, 'reject_password', return_value=False
+        ) as reject:
+            self.assertFalse(users.authenticate('inexistent', 'secret'))
+            self.assertFalse(users.authenticate('phil', 'secret'))
+        self.assertEqual(reject.call_count, 2)
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_expired_user_spends_the_time_of_a_check(self):
+        ugm = create_ugm()
+        ugm.user_expires_attr = 'expires'
+        users = ugm.users
+        users.create('phil')
+        users.set_hashed_pw('phil', hash_password('secret'))
+        users['phil'].expires = datetime.now() - timedelta(days=1)
+        with mock.patch.object(
+            ugm_module, 'reject_password', return_value=False
+        ) as reject:
+            self.assertFalse(users.authenticate('phil', 'secret'))
+        reject.assert_called_once_with('secret')
+
+    @testing.delete_table_records(SQLPrincipal)
+    @testing.delete_table_records(SQLUser)
+    def test_wrap_passwords(self):
+        users = create_ugm().users
+        current = hash_password('other')
+        for name, stored in (
+            ('phil', legacy_hash('secret')),
+            ('donald', current),
+            ('dagobert', None),
+            ('broken', 'not base64!'),
+        ):
+            users.create(name)
+            users.set_hashed_pw(name, stored)
+        session = users.session
+        self.assertEqual(wrap_passwords(session), (1, 4, ['broken']))
+        self.assertTrue(users['phil'].record.password.startswith('$scrypt-sha256$'))
+        self.assertTrue(check_password('secret', users['phil'].record.password))
+        self.assertEqual(users['donald'].record.password, current)
+        self.assertEqual(users['dagobert'].record.password, None)
+        self.assertEqual(users['broken'].record.password, 'not base64!')
+        # a second run finds nothing to do
+        self.assertEqual(wrap_passwords(session), (0, 4, ['broken']))
+
     def test_principals_are_added_by_create_only(self):
         ugm = create_ugm()
         with self.assertRaises(NotImplementedError) as arc:
@@ -620,3 +742,47 @@ class TestSqlUgmDetails(NodeTestCase):
         self.assertEqual(session.query(SQLUser).one().data, {'email': 'phil@example.com'})
         session.rollback()
         self.assertEqual(session.query(SQLUser).count(), 0)
+
+
+class TestWrapPasswordsMain(unittest.TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.mkdtemp()
+        self.url = 'sqlite:///' + os.path.join(self.tempdir, 'test.db')
+        self.engine = create_engine(self.url)
+        Base.metadata.create_all(self.engine)
+        self.session = sessionmaker(bind=self.engine)()
+
+    def tearDown(self):
+        self.session.close()
+        self.engine.dispose()
+        shutil.rmtree(self.tempdir)
+
+    def run_main(self):
+        with mock.patch.dict(os.environ, {'SQL_DB_URL': self.url}):
+            with mock.patch('builtins.print') as print_:
+                return wrap_passwords_main(), print_
+
+    def test_wraps_and_commits(self):
+        self.session.add(SQLUser(id='phil', login='phil', password=legacy_hash('secret')))
+        self.session.commit()
+        code, print_ = self.run_main()
+        self.assertEqual(code, 0)
+        print_.assert_called_once_with('1 of 1 passwords wrapped.')
+        self.session.expire_all()
+        stored = self.session.query(SQLUser).one().password
+        self.assertTrue(stored.startswith('$scrypt-sha256$'))
+        self.assertTrue(check_password('secret', stored))
+
+    def test_reports_malformed_values(self):
+        self.session.add(SQLUser(id='phil', login='phil', password='not base64!'))
+        self.session.commit()
+        code, print_ = self.run_main()
+        self.assertEqual(code, 1)
+        print_.assert_any_call('Malformed, left as they are: phil')
+
+    def test_url_is_required(self):
+        environ = {k: v for k, v in os.environ.items() if k != 'SQL_DB_URL'}
+        with mock.patch.dict(os.environ, environ, clear=True):
+            with mock.patch('builtins.print') as print_:
+                self.assertEqual(wrap_passwords_main(), 2)
+        print_.assert_called_once()

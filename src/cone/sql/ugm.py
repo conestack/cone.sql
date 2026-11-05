@@ -15,6 +15,10 @@ from node.ext.ugm import Groups as BaseGroups
 from node.ext.ugm import Ugm as BaseUgm
 from node.ext.ugm import User as BaseUser
 from node.ext.ugm import Users as BaseUsers
+from node.ext.ugm.password import check_password
+from node.ext.ugm.password import hash_password
+from node.ext.ugm.password import needs_rehash
+from node.ext.ugm.password import reject_password
 from node.utils import UNSET
 from operator import or_
 from plumber import Behavior
@@ -35,9 +39,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import NoResultFound
 import base64
-import hashlib
 import itertools
-import os
 import time
 import uuid
 
@@ -475,9 +477,6 @@ class PrincipalsBehavior(Behavior):
             self.session.commit()
 
 
-ENCODING = 'utf-8'
-
-
 class AuthenticationBehavior(Behavior):
     """Handles password authentication for ugm contract:
 
@@ -485,9 +484,6 @@ class AuthenticationBehavior(Behavior):
     - the plumbed class implements get_hashed_pw(id: str) and
       set_hashed_pw(id: str, hpw: str)
     """
-
-    salt_len = default(8)
-    hash_func = default(hashlib.sha256)
 
     def on_authenticated(self, id, **kw):
         """Can be overriden to do after-authentication stuff."""
@@ -497,26 +493,23 @@ class AuthenticationBehavior(Behavior):
         # cannot authenticate user with unset password.
         if not id or not pw:
             return False
-        if id not in self:
+        hpw = self.get_hashed_pw(id) if id in self else None
+        if not hpw or self[id].expired:
+            return reject_password(pw)
+        if not check_password(pw, hpw):
             return False
-        if self[id].expired:
-            return False
-        hpw = self.get_hashed_pw(id)
-        if hpw:
-            authenticated = self._chk_pw(pw, hpw)
-            if authenticated:
-                self.on_authenticated(id)
-
-            return authenticated
-        else:
-            return False
+        self.on_authenticated(id)
+        if needs_rehash(hpw):
+            self.set_hashed_pw(id, hash_password(pw))
+            self()
+        return True
 
     @override
     def passwd(self, id, oldpw, newpw):
         if id not in self:
             raise ValueError(f"User with id '{id}' does not exist.")
         if oldpw is not None:
-            if not self._chk_pw(oldpw, self.get_hashed_pw(id)):
+            if not check_password(oldpw, self.get_hashed_pw(id)):
                 raise ValueError('Old password does not match.')
         hpw = self.hash_passwd(newpw)
         self.set_hashed_pw(id, hpw)
@@ -524,17 +517,7 @@ class AuthenticationBehavior(Behavior):
 
     @default
     def hash_passwd(self, newpw):
-        salt = os.urandom(self.salt_len)
-        newpw = newpw.encode(ENCODING) if isinstance(newpw, str) else newpw
-        hashed = base64.b64encode(self.hash_func(newpw + salt).digest() + salt)
-        return hashed.decode()
-
-    @default
-    def _chk_pw(self, plain, hashed):
-        hashed = base64.b64decode(hashed)
-        salt = hashed[-self.salt_len :]
-        plain = plain.encode(ENCODING) if isinstance(plain, str) else plain
-        return hashed == self.hash_func(plain + salt).digest() + salt
+        return hash_password(newpw)
 
     @default
     def get_hashed_pw(self, id):

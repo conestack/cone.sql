@@ -4,7 +4,21 @@ Changes
 1.2.2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Hash passwords with scrypt, see ``node.ext.ugm.password``. Hashes of the former
+  format stay valid and get replaced with the next successful login, no user has to
+  set a new password. An older version of this package cannot read the new hashes,
+  keep a backup of the principal table for going back. ``salt_len``, ``hash_func``
+  and ``_chk_pw`` of ``AuthenticationBehavior`` are gone. Requires ``node.ext.ugm``
+  2.0.2.
+  [rnix]
+
+- Add ``python -m cone.sql.wrap_passwords``, it protects the hashes of the former
+  format in the database without knowing the passwords.
+  [rnix]
+
+- A login with an unknown user, an expired user or a user without password takes
+  the time of a password check.
+  [rnix]
 
 
 1.2.1 (2026-10-31)
